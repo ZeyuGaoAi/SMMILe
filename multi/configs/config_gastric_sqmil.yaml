@@ -1,0 +1,46 @@
+# configs of task
+n_classes: 3
+task: 'gastric_subtype'
+multi_label: True
+
+# configs of path
+data_root_dir: '/home3/gzy/Gastric/feature_resnet/'
+data_sp_dir: '/home3/gzy/Gastric/sp_n9_c50_2048/'
+label_frac: 1
+models_dir: None
+# '/home1/gzy/Nature/SQMILM/results_gastric/new_ablation/gastric_subtyping_sqmil_ml_biloss_drop_spg10_n9_s1/'
+
+results_dir: './results/'
+exp_code: 'gastric_subtyping_iamil'
+
+# configs of training
+seed: 1
+k: 5
+k_start: 0
+k_end: 5
+max_epochs: 200
+lr: 0.00002
+reg: 0.00001
+early_stopping: True
+drop_out: True
+drop_rate: 0.25
+opt: 'adam'
+bag_loss: 'bce' # bibce
+weighted_sample: True
+log_data: True
+testing: False
+
+# configs of model
+model_type: 'sqmil_nic'
+model_size: 'big'
+fea_dim: 1024
+consistency: False
+drop_with_score: False
+superpixel: False
+G: 10
+inst_refinement: False
+inst_rate: 0.1
+n_refs: 3
+ref_start_epoch: 0
+mrf: False
+tau: 0.1
