@@ -11,7 +11,7 @@ module load GCC/8.3.0 CUDA/10.1.243 cuDNN/7.6.4.38
 python -m venv ./pyvenv/smmile
 source ./pyvenv/smmile/bin/activate
 pip install --upgrade pip
-
+pip install -r requirements.txt
 ```
 
 # License
