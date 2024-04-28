@@ -103,13 +103,12 @@ parser.add_argument('--drop_rate', type=float, default=0.25,
                     help='drop_rate for official dropout')
 parser.add_argument('--bag_loss', type=str, choices=['ce', 'bce','bibce'], default='ce',
                      help='slide-level classification loss function (default: ce)')
-parser.add_argument('--model_type', type=str, choices=['sqmil_nic','sqmil_nic_single'], default='sqmil_nic', 
-                    help='type of model (default: sqmil_nic')
+parser.add_argument('--model_type', type=str, choices=['smmile','smmile_single'], default='smmile', 
+                    help='type of model (default: smmile')
 parser.add_argument('--exp_code', type=str, help='experiment code for saving results')
 parser.add_argument('--weighted_sample', action='store_true', default=False, help='enable weighted sampling')
 parser.add_argument('--model_size', type=str, choices=['small', 'big'], default='small', help='size of model')
-parser.add_argument('--task', type=str, choices=
-                    ['renal_subtype_yfy','camelyon','renal_subtype','lung_subtype','ovarian_subtype'])
+parser.add_argument('--task', type=str, choices=['camelyon','renal_subtype','lung_subtype','ovarian_subtype'])
 parser.add_argument('--fea_dim', type=int, default=1024,
                      help='the original dimensions of patch embedding')
 parser.add_argument('--models_dir', type=str, default=None,
@@ -119,7 +118,7 @@ parser.add_argument('--n_classes', type=int, default=3,
 parser.add_argument('--n_refs', type=int, default=3,
                      help='the times of refinement')
 
-### sqmil_nic specific options
+### smmile specific options
 parser.add_argument('--drop_with_score', action='store_true', default=False,
                      help='enable weighted drop')
 parser.add_argument('--data_sp_dir', type=str, default=None, 
@@ -183,7 +182,7 @@ args.weighted_sample = cfg['weighted_sample']
 args.fea_dim = cfg['fea_dim']
 args.opt = cfg['opt']
 args.models_dir = cfg['models_dir']
-### SQMIL specific options
+### SMMILe specific options
 args.consistency = cfg['consistency']
 args.drop_with_score = cfg['drop_with_score']
 args.superpixel = cfg['superpixel']
@@ -199,7 +198,6 @@ args.tau = cfg['tau']
     
 seed_torch(args.seed)
 
-encoding_size = 1024
 settings = {'num_splits': args.k, 
             'k_start': args.k_start,
             'k_end': args.k_end,
@@ -237,7 +235,7 @@ print('\nLoad Dataset')
 
 if args.task == 'camelyon':
     args.n_classes=2
-    if args.model_type in ['sqmil_nic_single']:
+    if args.model_type in ['smmile_single']:
             dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/camelyon_npy.csv',
                                 data_dir = os.path.join(args.data_root_dir),
                                 data_mag = '0_512',
@@ -250,24 +248,9 @@ if args.task == 'camelyon':
                                 label_dict = {'normal':0, 'tumor':1},
                                 patient_strat= False,
                                 ignore=[])
-elif args.task == 'renal_subtype_yfy':
-    args.n_classes=3
-    if args.model_type in ['sqmil_nic']:
-            dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/renal_subtyping_yfy_npy_old.csv',
-                                data_dir = os.path.join(args.data_root_dir),
-                                data_mag = '0_1024',
-                                sp_dir = os.path.join(args.data_sp_dir),
-                                task = args.task,
-                                size = 1024,
-                                shuffle = False, 
-                                seed = 10, 
-                                print_info = True,
-                                label_dict = {'ccrcc':0, 'prcc':1, 'chrcc':2},
-                                patient_strat= False,
-                                ignore=[])
 elif args.task == 'renal_subtype':
     args.n_classes=3
-    if args.model_type in ['sqmil_nic']:
+    if args.model_type in ['smmile']:
             dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/renal_subtyping_npy.csv',
                                 data_dir = os.path.join(args.data_root_dir),
                                 data_mag = '1_512',
@@ -283,7 +266,7 @@ elif args.task == 'renal_subtype':
             
 elif args.task == 'lung_subtype':
     args.n_classes=2
-    if args.model_type in ['sqmil_nic']:
+    if args.model_type in ['smmile']:
             dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/lung_subtyping_npy.csv',
                                 data_dir = os.path.join(args.data_root_dir),
                                 data_mag = '1_512',
@@ -298,7 +281,7 @@ elif args.task == 'lung_subtype':
                                 ignore=[])
 elif args.task == 'ovarian_subtype':
     args.n_classes=5
-    if args.model_type in ['sqmil_nic']:
+    if args.model_type in ['smmile']:
             dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/ovarian_subtyping_npy.csv',
                                 data_dir = os.path.join(args.data_root_dir),
                                 data_mag = '0_512',

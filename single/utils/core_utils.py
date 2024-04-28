@@ -4,7 +4,7 @@ from utils.utils import *
 import os
 import pandas as pd
 from datasets.dataset_nic import save_splits
-from models.model_sqmil import SQMIL_NIC, SQMIL_NIC_SINGLE
+from models.model_smmile import SMMILe, SMMILe_SINGLE
 from sklearn.preprocessing import label_binarize
 from sklearn.metrics import roc_auc_score, roc_curve, accuracy_score, classification_report
 from sklearn.metrics import auc as calc_auc
@@ -134,10 +134,10 @@ def train(datasets, cur, args):
     model_dict = {'dropout': args.drop_out, 'drop_rate': args.drop_rate, 'n_classes': args.n_classes, 
                   'fea_dim': args.fea_dim, "size_arg": args.model_size, 'n_refs': args.n_refs}
 
-    if args.model_type == 'sqmil_nic':
-        model = SQMIL_NIC(**model_dict)
-    elif args.model_type == 'sqmil_nic_single':
-        model = SQMIL_NIC_SINGLE(**model_dict)
+    if args.model_type == 'smmile':
+        model = SMMILe(**model_dict)
+    elif args.model_type == 'smmile_single':
+        model = SMMILe_SINGLE(**model_dict)
     else:
         raise NotImplementedError
 
@@ -173,18 +173,18 @@ def train(datasets, cur, args):
     
     _, val_error, val_auc, val_iauc, _ = summary(model, val_loader, args)
 
-    if args.ref_start_epoch == 0: # continue training the model from ckpt 
+    if args.ref_start_epoch == 0 and args.inst_refinement: # continue training the model from ckpt 
         ref_start = True
     else:
         ref_start = False
     
     for epoch in range(args.max_epochs):
-        if args.model_type in ['sqmil_nic']:
-            train_loop_sqmil(epoch, model, train_loader, optimizer, writer, loss_fn, ref_start, args)
-            stop = validate_sqmil(cur, epoch, model, val_loader, early_stopping, writer, loss_fn, ref_start, args)
-        elif args.model_type in ['sqmil_nic_single']:
-            train_loop_sqmil_single(epoch, model, train_loader, optimizer, writer, loss_fn, ref_start, args)
-            stop = validate_sqmil_single(cur, epoch, model, val_loader, early_stopping, writer, loss_fn, ref_start, args)
+        if args.model_type in ['smmile']:
+            train_loop_smmile(epoch, model, train_loader, optimizer, writer, loss_fn, ref_start, args)
+            stop = validate_smmile(cur, epoch, model, val_loader, early_stopping, writer, loss_fn, ref_start, args)
+        elif args.model_type in ['smmile_single']:
+            train_loop_smmile_single(epoch, model, train_loader, optimizer, writer, loss_fn, ref_start, args)
+            stop = validate_smmile_single(cur, epoch, model, val_loader, early_stopping, writer, loss_fn, ref_start, args)
         else:
             raise NotImplementedError
         
@@ -223,7 +223,7 @@ def train(datasets, cur, args):
         writer.close()
     return results_dict, test_auc, val_auc, 1-test_error, 1-val_error , test_iauc, val_iauc
         
-def train_loop_sqmil(epoch, model, loader, optimizer, writer = None, loss_fn = None, ref_start = False, args = None): 
+def train_loop_smmile(epoch, model, loader, optimizer, writer = None, loss_fn = None, ref_start = False, args = None): 
     
     n_classes = args.n_classes
     bi_loss = args.bi_loss
@@ -414,7 +414,7 @@ def train_loop_sqmil(epoch, model, loader, optimizer, writer = None, loss_fn = N
         writer.add_scalar('train/error', train_error, epoch)
         writer.add_scalar('train/inst_auc', inst_auc, epoch)
 
-def train_loop_sqmil_single(epoch, model, loader, optimizer, writer = None, loss_fn = None, ref_start = False, args = None):
+def train_loop_smmile_single(epoch, model, loader, optimizer, writer = None, loss_fn = None, ref_start = False, args = None):
 
     n_classes = args.n_classes
     bi_loss = args.bi_loss
@@ -586,7 +586,7 @@ def train_loop_sqmil_single(epoch, model, loader, optimizer, writer = None, loss
         writer.add_scalar('train/error', train_error, epoch)
         writer.add_scalar('train/inst_auc', inst_auc, epoch)
 
-def validate_sqmil(cur, epoch, model, loader, early_stopping = None, writer = None, loss_fn = None, ref_start=False, args=None):
+def validate_smmile(cur, epoch, model, loader, early_stopping = None, writer = None, loss_fn = None, ref_start=False, args=None):
     
     n_classes = args.n_classes
     bi_loss = args.bi_loss
@@ -746,7 +746,7 @@ def validate_sqmil(cur, epoch, model, loader, early_stopping = None, writer = No
 
     return False
 
-def validate_sqmil_single(cur, epoch, model, loader, early_stopping = None, writer = None, loss_fn = None, 
+def validate_smmile_single(cur, epoch, model, loader, early_stopping = None, writer = None, loss_fn = None, 
                           ref_start=False, args=None):
     
     n_classes = args.n_classes
@@ -931,20 +931,20 @@ def summary(model, loader, args):
                 all_inst_label += inst_label
 
                 if not inst_refinement:
-                    if model_type == 'sqmil_nic':
+                    if model_type == 'smmile':
                         inst_score = score[:,Y_hat].detach().cpu().numpy()[:]
-                    elif model_type == 'sqmil_nic_single':
+                    elif model_type == 'smmile_single':
                         inst_score = score[:, 0].detach().cpu().numpy()[:]
                     else:
                         inst_score = score[:,Y_hat].detach().cpu().numpy()[:]
                     inst_score = list((inst_score-inst_score.min())/max((inst_score.max()-inst_score.min()), 1e-10))
                     inst_pred = [1 if i>0.5 else 0 for i in inst_score]
                 else:
-                    if model_type == 'sqmil_nic':
+                    if model_type == 'smmile':
                         inst_score = list(1 - ref_score[:,-1].detach().cpu().numpy())
                         inst_pred = torch.argmax(ref_score, dim=1).detach().cpu().numpy()
                         inst_pred = [0 if i==n_classes else 1 for i in inst_pred] # for one-class cancer
-                    elif model_type == 'sqmil_nic_single':
+                    elif model_type == 'smmile_single':
                         inst_score = list(ref_score[:,1].detach().cpu().numpy())
                         inst_pred = list(torch.argmax(ref_score, dim=1).detach().cpu().numpy())
                     else:
@@ -981,7 +981,7 @@ def summary(model, loader, args):
     
     print(classification_report(all_inst_label, all_inst_pred, zero_division=1))
 
-    if model_type == 'sqmil_nic_single':
+    if model_type == 'smmile_single':
         auc = roc_auc_score(all_labels, all_probs[:, 1])
     else:
         aucs = []

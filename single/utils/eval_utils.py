@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from models.model_sqmil import SQMIL_NIC, SQMIL_NIC_SINGLE
+from SMMILe.single.models.model_smmile import SMMILe, SMMILe_SINGLE
 import pdb
 import os
 import pandas as pd
@@ -19,10 +19,10 @@ def initiate_model(args, ckpt_path):
     model_dict = {'dropout': args.drop_out, 'drop_rate': args.drop_rate, 'n_classes': args.n_classes, 
                   'fea_dim': args.fea_dim, "size_arg": args.model_size, 'n_refs': args.n_refs}
    
-    if args.model_type == 'sqmil_nic':
-        model = SQMIL_NIC(**model_dict)
-    elif args.model_type == 'sqmil_nic_single':
-        model = SQMIL_NIC_SINGLE(**model_dict)
+    if args.model_type == 'smmile':
+        model = SMMILe(**model_dict)
+    elif args.model_type == 'smmile_single':
+        model = SMMILe_SINGLE(**model_dict)
     else:
         raise NotImplementedError
 
@@ -97,9 +97,9 @@ def summary(model, loader, args):
                 all_inst_label += inst_label
 
                 if not inst_refinement:
-                    if model_type == 'sqmil_nic':
+                    if model_type == 'smmile':
                         inst_score = score[:,Y_hat].detach().cpu().numpy()[:]
-                    elif model_type == 'sqmil_nic_single':
+                    elif model_type == 'smmile_single':
                         inst_score = score[:, 0].detach().cpu().numpy()[:]
                     else:
                         inst_score = score[:,Y_hat].detach().cpu().numpy()[:]
@@ -107,11 +107,11 @@ def summary(model, loader, args):
                     inst_score = list((inst_score-inst_score.min())/max((inst_score.max()-inst_score.min()), 1e-10))
                     inst_pred = [1 if i>0.5 else 0 for i in inst_score]
                 else:
-                    if model_type == 'sqmil_nic':
+                    if model_type == 'smmile':
                         inst_score = list(1 - ref_score[:,-1].detach().cpu().numpy())
                         inst_pred = torch.argmax(ref_score, dim=1).detach().cpu().numpy()
                         inst_pred = [0 if i==n_classes else 1 for i in inst_pred] # for one-class cancer
-                    elif model_type == 'sqmil_nic_single':
+                    elif model_type == 'smmile_single':
                         inst_score = list(ref_score[:,1].detach().cpu().numpy())
                         inst_pred = list(torch.argmax(ref_score, dim=1).detach().cpu().numpy())
                     else:
@@ -157,7 +157,7 @@ def summary(model, loader, args):
     
     print(classification_report(all_inst_label_sub, all_inst_pred_sub, zero_division=1))
 
-    if model_type == 'sqmil_nic_single':
+    if model_type == 'smmile_single':
         auc_score = roc_auc_score(all_labels, all_probs[:, 1])
     else:
         aucs = []

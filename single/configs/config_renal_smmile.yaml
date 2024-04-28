@@ -1,17 +1,15 @@
 # configs of task
 n_classes: 3
-task: 'gastric_subtype'
-multi_label: True
+task: 'renal_subtype'
 
 # configs of path
-data_root_dir: '/home3/gzy/Gastric/feature_resnet/'
-data_sp_dir: '/home3/gzy/Gastric/sp_n9_c50_2048/'
+data_root_dir: '/home3/gzy/Renal/feature_resnet/' # patch embedding path
+data_sp_dir: '/home3/gzy/Renal/sp_n16_c50_2048/' # superpixel segmentation map path
 label_frac: 1.0
-models_dir: None
-# '/home1/gzy/Nature/SQMILM/results_gastric/new_ablation/gastric_subtyping_sqmil_ml_biloss_drop_spg10_n9_s1/'
+models_dir: None # set model path for second round instance refinement training
 
 results_dir: './results/'
-exp_code: 'gastric_subtyping_smmile_res50_1512_5fold'
+exp_code: 'renal_subtyping_smmile_res50_1512_5fold'
 
 # configs of training
 seed: 1
@@ -25,7 +23,7 @@ early_stopping: True
 drop_out: True
 drop_rate: 0.25
 opt: 'adam'
-bag_loss: 'bibce' # bibce
+bag_loss: 'bce'
 weighted_sample: True
 log_data: True
 testing: False

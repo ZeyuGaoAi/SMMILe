@@ -148,21 +148,6 @@ if args.task == 'camelyon':
                                 label_dict = {'normal':0, 'tumor':1},
                                 patient_strat= False,
                                 ignore=[])
-elif args.task == 'renal_subtype_yfy':
-    args.n_classes=3
-    args.patch_size=1024
-    if args.model_type in ['sqmil_nic']:
-            dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/renal_subtyping_yfy_npy_old.csv',
-                                data_dir = os.path.join(args.data_root_dir),
-                                data_mag = '0_1024',
-                                sp_dir = os.path.join(args.data_sp_dir),
-                                size = 1024,
-                                shuffle = False, 
-                                seed = 10, 
-                                print_info = True,
-                                label_dict = {'ccrcc':0, 'prcc':1, 'chrcc':2},
-                                patient_strat= False,
-                                ignore=[])
 elif args.task == 'renal_subtype':
     args.n_classes=3
     args.patch_size=2048

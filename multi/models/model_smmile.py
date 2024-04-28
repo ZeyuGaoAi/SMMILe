@@ -75,7 +75,7 @@ args:
     instance_loss_fn: loss function to supervise instance-level training
 """
 
-class SQMIL(nn.Module):
+class IAMIL(nn.Module):
     def __init__(self, gate=True, size_arg = "small", dropout = False, n_classes=2, n_refs=1, fea_dim=1024, 
                  instance_loss_fn=nn.CrossEntropyLoss(reduction='none')):
         nn.Module.__init__(self)
@@ -255,7 +255,7 @@ class SQMIL(nn.Module):
             
         return final_score, Y_prob, Y_hat, ref_score, results_dict
     
-class SQMIL_NIC(SQMIL):
+class SMMILe(IAMIL):
     def __init__(self, gate=True, size_arg = "small", dropout = False, n_classes=2, 
                  n_refs=3, drop_rate=0.1, fea_dim=1024, multi_label = False,
                  instance_loss_fn=nn.CrossEntropyLoss(reduction='none')):

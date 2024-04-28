@@ -178,23 +178,6 @@ elif args.task == 'gleason_subtype':
                                               '1,1,0':6,'1,1,1':7}, # 36, 4, 22, 19, 33, 0, 32, 7
                                 patient_strat= False,
                                 ignore=[])
-
-elif args.task == 'gastric_esd_subtype':
-    args.n_classes = 2
-    args.patch_size=512
-    if args.model_type in ['sqmil_nic']:
-        dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/gastric_esd_subtyping_npy_new.csv',
-                                data_dir = os.path.join(args.data_root_dir),
-                                data_mag = '0_512',
-                                sp_dir = os.path.join(args.data_sp_dir),
-                                size = 512,
-                                task = args.task,
-                                shuffle = False, 
-                                seed = 10, 
-                                print_info = True,
-                                label_dict = {'0,0':0, '0,1':1, '1,1':2},
-                                patient_strat= False,
-                                ignore=[])
         
 else:
     raise NotImplementedError

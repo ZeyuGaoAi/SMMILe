@@ -5,12 +5,11 @@ from torch.optim import lr_scheduler
 import os
 import pandas as pd
 from datasets.dataset_nic import save_splits
-from models.model_sqmil import SQMIL_NIC
+from models.model_smmile import SMMILe
 from sklearn.preprocessing import label_binarize
 from sklearn.metrics import roc_auc_score, roc_curve, accuracy_score, classification_report
 from sklearn.metrics import auc as calc_auc
 from sklearn.metrics import precision_score, recall_score, f1_score
-from sklearn.metrics import confusion_matrix
 from utils.bi_tempered_loss_pytorch import bi_tempered_binary_logistic_loss
 
 def cal_pos_acc(pos_label,pos_score,inst_rate):
@@ -162,7 +161,7 @@ def train(datasets, cur, args):
                   'fea_dim': args.fea_dim, "size_arg": args.model_size,
                   'n_refs': args.n_refs}
 
-    model = SQMIL_NIC(**model_dict)
+    model = SMMILe(**model_dict)
 
     
     if args.models_dir is not None:
@@ -197,16 +196,16 @@ def train(datasets, cur, args):
     print('Done!')
     
     
-    if args.ref_start_epoch == 0: # continue training the model from ckpt 
+    if args.ref_start_epoch == 0 and args.inst_refinement: # continue training the model from ckpt 
         ref_start = True
     else:
         ref_start = False
     
 
     for epoch in range(args.max_epochs):
-        if args.model_type in ['sqmil_nic']:
-            train_loop_sqmil(epoch, model, train_loader, optimizer, writer, loss_fn, ref_start, args)
-            stop = validate_sqmil(cur, epoch, model, val_loader, early_stopping, writer, loss_fn, 
+        if args.model_type in ['smmile']:
+            train_loop_smmile(epoch, model, train_loader, optimizer, writer, loss_fn, ref_start, args)
+            stop = validate_smmile(cur, epoch, model, val_loader, early_stopping, writer, loss_fn, 
                                     ref_start, scheduler, args)
         else:
             raise NotImplementedError 
@@ -245,7 +244,7 @@ def train(datasets, cur, args):
         writer.close()
     return results_dict, test_auc, val_auc, 1-test_error, 1-val_error , test_iauc, val_iauc
         
-def train_loop_sqmil(epoch, model, loader, optimizer, writer = None, loss_fn = None, ref_start = False, args=None):
+def train_loop_smmile(epoch, model, loader, optimizer, writer = None, loss_fn = None, ref_start = False, args=None):
     
     n_classes = args.n_classes
     consistency = args.consistency
@@ -537,7 +536,7 @@ def train_loop_sqmil(epoch, model, loader, optimizer, writer = None, loss_fn = N
         writer.add_scalar('train/error', train_error, epoch)
         writer.add_scalar('train/inst_auc', inst_auc, epoch)
 
-def validate_sqmil(cur, epoch, model, loader, early_stopping = None, writer = None, loss_fn = None, 
+def validate_smmile(cur, epoch, model, loader, early_stopping = None, writer = None, loss_fn = None, 
                      ref_start=False, scheduler = None, args = None):
 
     n_classes = args.n_classes

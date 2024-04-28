@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from models.model_sqmil import SQMIL_NIC
+from models.model_smmile import SMMILe
 import pdb
 import os
 import pandas as pd
@@ -22,7 +22,7 @@ def initiate_model(args, ckpt_path):
                   'fea_dim': args.fea_dim, "size_arg": args.model_size,
                   'n_refs': args.n_refs}
 
-    model = SQMIL_NIC(**model_dict)
+    model = SMMILe(**model_dict)
 
     print_network(model)
 

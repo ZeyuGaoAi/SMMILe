@@ -76,7 +76,7 @@ args:
     subtyping: whether it's a subtyping problem
 """
 
-class SQMIL(nn.Module):
+class IAMIL(nn.Module):
     def __init__(self, gate=True, size_arg = "small", dropout = False, subtyping=False, n_classes=2, n_refs=1, fea_dim=1024, 
                  instance_loss_fn=nn.CrossEntropyLoss(reduction='none')):
         nn.Module.__init__(self)
@@ -243,7 +243,7 @@ class SQMIL(nn.Module):
             
         return final_score, Y_prob, Y_hat, results_dict
     
-class SQMIL_NIC(SQMIL):
+class SMMILe(IAMIL):
     def __init__(self, gate=True, size_arg = "small", dropout = False,
                  n_classes=2, n_refs=3, drop_rate=0.1, fea_dim=1024,
                  instance_loss_fn=nn.CrossEntropyLoss(reduction='none')):
@@ -504,13 +504,13 @@ class SQMIL_NIC(SQMIL):
 
             Y_hat = torch.topk(torch.mean(torch.stack(Y_prob), dim=0), 1, dim = 0)[1]
 
-            # max pooling for each superpixel
-            sp_score_max = torch.max(torch.stack(all_sp_score), dim=0)[0]
-            sp_score_mean = torch.mean(torch.stack(all_sp_score), dim=0)
+            # # max pooling for each superpixel
+            # sp_score_max = torch.max(torch.stack(all_sp_score), dim=0)[0]
+            # sp_score_mean = torch.mean(torch.stack(all_sp_score), dim=0)
             
-            # aggregation for sp
-            for sp_index in range(len(sp_list)):
-                final_score_sp[sp==sp_list[sp_index]] = sp_score_mean[sp_index]
+            # # aggregation for sp
+            # for sp_index in range(len(sp_list)):
+            #     final_score_sp[sp==sp_list[sp_index]] = sp_score_mean[sp_index]
             
         ref_score = final_score
         
@@ -545,7 +545,7 @@ class SQMIL_NIC(SQMIL):
 
         return final_score_sp, Y_prob, Y_hat, ref_score, results_dict
 
-class SQMIL_NIC_SINGLE(SQMIL_NIC):
+class SMMILe_SINGLE(SMMILe):
     def __init__(self, gate=True, size_arg = "small", dropout = False,
                  n_classes=1, n_refs=3, drop_rate=0.1, fea_dim=1024,
                  instance_loss_fn=nn.CrossEntropyLoss(reduction='none')):
@@ -815,9 +815,9 @@ class SQMIL_NIC_SINGLE(SQMIL_NIC):
 
                 # use original Y_hat is better
 
-                # max pooling for each superpixel
-                sp_score_max = torch.max(torch.stack(all_sp_score), dim=0)[0]
-                sp_score_mean = torch.mean(torch.stack(all_sp_score), dim=0)
+                # # max pooling for each superpixel
+                # sp_score_max = torch.max(torch.stack(all_sp_score), dim=0)[0]
+                # sp_score_mean = torch.mean(torch.stack(all_sp_score), dim=0)
             
             
         ref_score = final_score_sp

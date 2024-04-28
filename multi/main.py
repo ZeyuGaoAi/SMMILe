@@ -101,13 +101,12 @@ parser.add_argument('--opt', type=str, choices = ['adam', 'sgd'], default='adam'
 parser.add_argument('--drop_out', action='store_true', default=False, help='enabel dropout (p=0.25)')
 parser.add_argument('--bag_loss', type=str, choices=['svm', 'ce', 'bce', 'bibce'], default='ce',
                      help='slide-level classification loss function (default: ce)')
-parser.add_argument('--model_type', type=str, choices=['sqmil_nic'], default='sqmil_nic', 
-                    help='type of model (default: sqmil_nic)')
+parser.add_argument('--model_type', type=str, choices=['smmile'], default='smmile', 
+                    help='type of model (default: smmile)')
 parser.add_argument('--exp_code', type=str, help='experiment code for saving results')
 parser.add_argument('--weighted_sample', action='store_true', default=False, help='enable weighted sampling')
 parser.add_argument('--model_size', type=str, choices=['small', 'big'], default='small', help='size of model, does not affect mil')
-parser.add_argument('--task', type=str, choices=['gastric_subtype','gleason_subtype','gastric_esd_subtype',
-                                                 'renal_subtype', 'cervical_subtype'])
+parser.add_argument('--task', type=str, choices=['gastric_subtype','gleason_grading'])
 parser.add_argument('--fea_dim', type=int, default=1024,
                      help='the original dimensions of patch embedding')
 parser.add_argument('--models_dir', type=str, default=None,
@@ -119,7 +118,7 @@ parser.add_argument('--n_refs', type=int, default=3,
 parser.add_argument('--drop_rate', type=float, default=0.25,
                     help='drop_rate for official dropout')
 
-### SQMIL specific options
+### SMMILe specific options
 parser.add_argument('--consistency', action='store_true', default=False,
                      help='consistency for the normal class')
 parser.add_argument('--multi_label', action='store_true', default=False,
@@ -187,7 +186,7 @@ args.weighted_sample = cfg['weighted_sample']
 args.fea_dim = cfg['fea_dim']
 args.opt = cfg['opt']
 args.models_dir = cfg['models_dir']
-### SQMIL specific options
+### SMMILe specific options
 args.multi_label = cfg['multi_label']
 args.consistency = cfg['consistency']
 args.drop_with_score = cfg['drop_with_score']
@@ -244,7 +243,7 @@ settings.update({'tau': args.tau})
 print('\nLoad Dataset')
         
 if args.task == 'gastric_subtype':
-    if args.model_type in ['sqmil_nic']:
+    if args.model_type in ['smmile']:
         args.n_classes = 3
         dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/gastric_subtyping_npy.csv',
                                 data_dir = os.path.join(args.data_root_dir),
@@ -259,9 +258,9 @@ if args.task == 'gastric_subtype':
                                 patient_strat= False,
                                 ignore=[])
         
-elif args.task == 'gleason_subtype':
+elif args.task == 'gleason_grading':
     args.n_classes = 3
-    if args.model_type in ['sqmil_nic']:
+    if args.model_type in ['smmile']:
         dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/gleason_subtyping_npy.csv',
                                 data_dir = os.path.join(args.data_root_dir),
                                 data_mag = '0_1024',
@@ -273,39 +272,6 @@ elif args.task == 'gleason_subtype':
                                 print_info = True,
                                 label_dict = {'0,0,0':0, '0,0,1':1, '0,1,0':2, '0,1,1':3, '1,0,0':4, '1,0,1':5, 
                                               '1,1,0':6,'1,1,1':7}, # 36, 4, 22, 19, 33, 0, 32, 7
-                                patient_strat= False,
-                                ignore=[])
-
-elif args.task == 'gastric_esd_subtype':
-    args.n_classes = 2
-    if args.model_type in ['sqmil_nic']:
-        dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/gastric_esd_subtyping_npy_new.csv',
-                                data_dir = os.path.join(args.data_root_dir),
-                                data_mag = '0_512',
-                                sp_dir = os.path.join(args.data_sp_dir),
-                                size = 512,
-                                task = args.task,
-                                shuffle = False, 
-                                seed = 10, 
-                                print_info = True,
-                                label_dict =  {'0,0':0, '0,1':1, '1,1':2}, # {'0,0':0, '0,1':1, '1,0':2, '1,1':3},
-                                patient_strat= False,
-                                ignore=[])
-        
-elif args.task == 'cervical_subtype':
-    args.n_classes = 3
-    if args.model_type in ['sqmil_nic']:
-        dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/cervical_subtyping_npy.csv',
-                                data_dir = os.path.join(args.data_root_dir),
-                                data_mag = '0_128',
-                                sp_dir = os.path.join(args.data_sp_dir),
-                                size = 128,
-                                task = args.task,
-                                shuffle = False, 
-                                seed = 10, 
-                                print_info = True,
-                                label_dict =  {'0,0,0':0, '0,0,1':1, '0,1,0':2, '0,1,1':3, '1,0,0':4, '1,0,1':5,
-                                               '1,1,0':6, '1,1,1':7,},
                                 patient_strat= False,
                                 ignore=[])
         

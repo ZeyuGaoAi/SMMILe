@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from models.model_sqmil import SQMIL_NIC, SQMIL_NIC_SINGLE
+from SMMILe.single.models.model_smmile import SMMILe, SMMILe_SINGLE
 import pdb
 import os
 import pandas as pd
@@ -43,10 +43,10 @@ def initiate_model(model_type, model_size, drop_out, drop_rate, n_classes, fea_d
     model_dict = {'dropout': drop_out, 'drop_rate': drop_rate, 'n_classes': n_classes, 
                   'fea_dim': fea_dim, "size_arg": model_size, 'n_refs': n_refs}
    
-    if model_type == 'sqmil_nic':
-        model = SQMIL_NIC(**model_dict)
-    elif model_type == 'sqmil_nic_single':
-        model = SQMIL_NIC_SINGLE(**model_dict)
+    if model_type == 'smmile':
+        model = SMMILe(**model_dict)
+    elif model_type == 'smmile_single':
+        model = SMMILe_SINGLE(**model_dict)
     else:
         raise NotImplementedError
 
@@ -90,11 +90,11 @@ def summary(model, data, patch_size, sp_data,n_classes, model_type, inst_refinem
 
         Y_prob = Y_prob[0]
 
-        if model_type == 'sqmil_nic':
+        if model_type == 'smmile':
             inst_score = list(1 - ref_score[:,-1].detach().cpu().numpy())
             inst_pred = torch.argmax(ref_score, dim=1).detach().cpu().numpy()
             inst_pred = [0 if i==n_classes else 1 for i in inst_pred] # for one-class cancer
-        elif model_type == 'sqmil_nic_single':
+        elif model_type == 'smmile_single':
             inst_score = list(ref_score[:,1].detach().cpu().numpy())
             inst_pred = list(torch.argmax(ref_score, dim=1).detach().cpu().numpy())
         else:
@@ -130,23 +130,24 @@ def main_eval(npy_path,sp_path, model_type, model_size, drop_out, drop_rate, n_c
     return results_dict, df_inst
 
 
+if __name__ == "__main__":
 
-npy_path = '/home3/gzy/Renal/feature_resnet/TCGA-B4-5838-01Z-00-DX1.0CC46AA4-5C2C-46FD-9C94-BD96FF287218_1_512.npy'
-sp_path = '/home3/gzy/Renal/sp_n9_c50_2048/TCGA-B4-5838-01Z-00-DX1.0CC46AA4-5C2C-46FD-9C94-BD96FF287218_1_512.npy'
-model_type = 'sqmil_nic'
-model_size = 'small'
-drop_out = True
-drop_rate = 0.25
-n_classes = 3
-fea_dim = 1024
-n_refs = 3
-patch_size=2048
-inst_refinement = True
-ckpt_path = '../../SQMILS/results_renal/ablation/renal_subtyping_WSODNIC_dropv2_spg10_c50_ref3_1512_5fold_s1/s_0_checkpoint.pt'
+    npy_path = '/home3/gzy/Renal/feature_resnet/TCGA-B4-5838-01Z-00-DX1.0CC46AA4-5C2C-46FD-9C94-BD96FF287218_1_512.npy'
+    sp_path = '/home3/gzy/Renal/sp_n9_c50_2048/TCGA-B4-5838-01Z-00-DX1.0CC46AA4-5C2C-46FD-9C94-BD96FF287218_1_512.npy'
+    model_type = 'smmile'
+    model_size = 'small'
+    drop_out = True
+    drop_rate = 0.25
+    n_classes = 3
+    fea_dim = 1024
+    n_refs = 3
+    patch_size=2048
+    inst_refinement = True
+    ckpt_path = '../../SQMILS/results_renal/ablation/renal_subtyping_WSODNIC_dropv2_spg10_c50_ref3_1512_5fold_s1/s_0_checkpoint.pt'
 
-patient_result, df_inst  = main_eval(npy_path,sp_path, model_type, model_size, drop_out, drop_rate, n_classes, fea_dim, patch_size,n_refs, ckpt_path, inst_refinement)
-print(patient_result)
-print(df_inst)
+    patient_result, df_inst  = main_eval(npy_path,sp_path, model_type, model_size, drop_out, drop_rate, n_classes, fea_dim, patch_size,n_refs, ckpt_path, inst_refinement)
+    print(patient_result)
+    print(df_inst)
 
 
 
