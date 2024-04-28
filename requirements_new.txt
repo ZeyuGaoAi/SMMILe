@@ -1,0 +1,5 @@
+opencv-python==4.4.0.44
+torch==1.7.1+cu101
+torchvision==0.8.2+cu101
+torchaudio==0.7.2
+requests==2.21.0
