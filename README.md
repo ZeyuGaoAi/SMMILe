@@ -6,9 +6,13 @@ Accurate spatial quantification in computational pathology with multiple instanc
 
 # License
 
+This project is licensed under the GPLv3 License and is available for non-commercial academic purposes.
+
 # Acknowledgements
 
 # Citation
+
+If you find any useful, please cite our paper.
 
 Gao Z, Mao A, Dong Y, et al. Accurate spatial quantification in computational pathology with multiple instance learning[J]. medRxiv, 2024: 2024.04. 25.24306364.s
 
