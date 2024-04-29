@@ -143,7 +143,7 @@ if __name__ == "__main__":
     n_refs = 3
     patch_size=2048
     inst_refinement = True
-    ckpt_path = '../../SQMILS/results_renal/ablation/renal_subtyping_WSODNIC_dropv2_spg10_c50_ref3_1512_5fold_s1/s_0_checkpoint.pt'
+    ckpt_path = '/home/z/zeyugao/SMMILe/ckpt/smmile_renal/s_0_checkpoint_best.pt'
 
     patient_result, df_inst  = main_eval(npy_path,sp_path, model_type, model_size, drop_out, drop_rate, n_classes, fea_dim, patch_size,n_refs, ckpt_path, inst_refinement)
     print(patient_result)
