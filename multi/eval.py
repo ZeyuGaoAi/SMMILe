@@ -1,24 +1,17 @@
 from __future__ import print_function
 
-import numpy as np
-
 import argparse
 import torch
-import torch.nn as nn
 import pdb
 import os
 import pandas as pd
 from utils.utils import *
-from math import floor
-import matplotlib.pyplot as plt
 from datasets.dataset_nic import Generic_MIL_SP_Dataset as NIC_MIL_SP_Dataset
 import h5py
 from utils.eval_utils import *
 
-import json
-
 # Training settings
-parser = argparse.ArgumentParser(description='WSOD Evaluation Script')
+parser = argparse.ArgumentParser(description='Evaluation Script')
 parser.add_argument('--data_root_dir', type=str, default=None,
                     help='data directory')
 parser.add_argument('--results_dir', type=str, default='./results',
@@ -31,8 +24,8 @@ parser.add_argument('--splits_dir', type=str, default=None,
                     help='splits directory, if using custom splits other than what matches the task (default: None)')
 parser.add_argument('--model_size', type=str, choices=['small', 'big'], default='small', 
                     help='size of model (default: small)')
-parser.add_argument('--model_type', type=str, choices=['sqmil_nic'], default='sqmil_nic', 
-                    help='type of model (default: sqmil_nic)')
+parser.add_argument('--model_type', type=str, choices=['smmile'], default='smmile', 
+                    help='type of model (default: smmile)')
 parser.add_argument('--drop_out', action='store_true', default=True, 
                     help='whether model uses dropout')
 parser.add_argument('--drop_rate', type=float, default=0.25,
@@ -50,7 +43,7 @@ parser.add_argument('--fea_dim', type=int, default=1024,
 parser.add_argument('--n_classes', type=int, default=3,
                      help='the number of types')
 
-### SQMIL specific options
+### smmile specific options
 parser.add_argument('--n_refs', type=int, default=3,
                      help='the times of refinement')
 parser.add_argument('--consistency', action='store_true', default=False,
@@ -103,7 +96,7 @@ args.task=conf['task']
 args.fea_dim=conf['fea_dim']
 args.model_type=conf['model_type']
 if args.model_type=='wsod_nic':
-    args.model_type='sqmil_nic'
+    args.model_type='smmile'
 args.model_size=conf['model_size']
 args.drop_out=conf['use_drop_out']
 args.drop_rate=conf['drop_rate']
@@ -145,7 +138,7 @@ f.close()
 
 print(settings)
 if args.task == 'gastric_subtype':
-    if args.model_type in ['sqmil_nic']:
+    if args.model_type in ['smmile']:
         args.n_classes = 3
         args.patch_size=2048
         dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/gastric_subtyping_npy.csv',
@@ -164,7 +157,7 @@ if args.task == 'gastric_subtype':
 elif args.task == 'gleason_subtype':
     args.n_classes = 3
     args.patch_size=1024
-    if args.model_type in ['sqmil_nic']:
+    if args.model_type in ['smmile']:
         dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/gleason_subtyping_npy.csv',
                                 data_dir = os.path.join(args.data_root_dir),
                                 data_mag = '0_1024',
@@ -218,7 +211,7 @@ if __name__ == "__main__":
         all_inst_acc.append(auc[2])
         all_acc.append(1-test_error)
         df.to_csv(os.path.join(args.save_dir, 'fold_{}.csv'.format(folds[ckpt_idx])), index=False)
-        df_inst.to_csv(os.path.join(args.save_dir, 'SQMILM_fold_{}_inst.csv'.format(folds[ckpt_idx])), index=False)
+        df_inst.to_csv(os.path.join(args.save_dir, 'smmile_fold_{}_inst.csv'.format(folds[ckpt_idx])), index=False)
 
     final_df = pd.DataFrame({'folds': folds, 'test_auc': all_auc, 'test_acc': all_acc,'test_iauc':all_inst_auc,'test_iacc':all_inst_acc})
     if len(folds) != args.k:

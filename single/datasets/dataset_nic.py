@@ -429,11 +429,10 @@ class Generic_MIL_SP_Dataset(Generic_WSI_Classification_Dataset):
         features_nic, mask, inst_label_nic_nd, coords_nic = \
             self.get_nic_with_coord(features, coords_nd, self.size, inst_label)
         
-        
-        if inst_label_nic_nd!=[]:
-            inst_label_nic = list(inst_label_nic_nd[np.where(mask==1)])
-        else:
+        if isinstance(inst_label_nic_nd, list):
             inst_label_nic = inst_label_nic_nd
+        else:
+            inst_label_nic = list(inst_label_nic_nd[np.where(mask==1)])
             
         
         return features_nic, label, [coords_nic, mask, sp, adj, coords_nd], inst_label_nic

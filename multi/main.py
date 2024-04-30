@@ -1,26 +1,16 @@
 from __future__ import print_function
 
 import argparse
-import pdb
 import os
-import math
-
-# internal imports
-from utils.file_utils import save_pkl, load_pkl
-from utils.utils import *
-from utils.core_utils import train
-from datasets.dataset_nic import Generic_MIL_SP_Dataset as NIC_MIL_SP_Dataset
-
-# pytorch imports
 import torch
-from torch.utils.data import DataLoader, sampler
-import torch.nn as nn
-import torch.nn.functional as F
-
+import yaml
 import pandas as pd
 import numpy as np
 
-import yaml
+from utils.file_utils import save_pkl
+from utils.utils import *
+from utils.core_utils import train
+from datasets.dataset_nic import Generic_MIL_SP_Dataset as NIC_MIL_SP_Dataset
 
 
 def main(args):

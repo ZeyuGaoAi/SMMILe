@@ -16,7 +16,7 @@ import h5py
 from utils.eval_utils import *
 
 # Training settings
-parser = argparse.ArgumentParser(description='CLAM Evaluation Script')
+parser = argparse.ArgumentParser(description='Evaluation Script')
 parser.add_argument('--data_root_dir', type=str, default='/home3/gzy/Renal/feature_resnet',
                     help='data directory')
 parser.add_argument('--results_dir', type=str, default='./results_renal/ablation',
@@ -30,8 +30,8 @@ parser.add_argument('--splits_dir', type=str, default=None,
                     help='splits directory, if using custom splits other than what matches the task (default: None)')
 parser.add_argument('--model_size', type=str, choices=['small', 'big'], default='small', 
                     help='size of model (default: small)')
-parser.add_argument('--model_type', type=str, choices=['sqmil_nic','sqmil_nic_single'], default='sqmil_nic', 
-                    help='type of model (default: sqmil_nic')
+parser.add_argument('--model_type', type=str, choices=['smmile','smmile_single'], default='smmile', 
+                    help='type of model (default: smmile')
 parser.add_argument('--drop_out', action='store_true', default=False, 
                     help='whether model uses dropout')
 parser.add_argument('--drop_rate', type=float, default=0.25,
@@ -51,7 +51,7 @@ parser.add_argument('--n_classes', type=int, default=3,
 parser.add_argument('--n_refs', type=int, default=3,
                      help='the times of refinement')
 
-### sqmil_nic specific options
+### smmile specific options
 parser.add_argument('--drop_with_score', action='store_true', default=False,
                      help='enable weighted drop')
 parser.add_argument('--data_sp_dir', type=str, default=None, 
@@ -97,9 +97,9 @@ args.task=conf['task']
 args.fea_dim=conf['fea_dim']
 args.model_type=conf['model_type']
 if args.model_type=='wsod_nic':
-    args.model_type='sqmil_nic'
+    args.model_type='smmile'
 elif args.model_type=='wsod_nic_single':
-    args.model_type='sqmil_nic_single'
+    args.model_type='smmile_single'
 args.model_size=conf['model_size']
 args.drop_out=conf['use_drop_out']
 # args.drop_rate=conf['drop_rate']
@@ -136,7 +136,7 @@ print(settings)
 if args.task == 'camelyon':
     args.n_classes=2
     args.patch_size=512
-    if args.model_type in ['sqmil_nic_single']:
+    if args.model_type in ['smmile_single']:
             dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/camelyon_npy.csv',
                                 data_dir = os.path.join(args.data_root_dir),
                                 data_mag = '0_512',
@@ -151,7 +151,7 @@ if args.task == 'camelyon':
 elif args.task == 'renal_subtype':
     args.n_classes=3
     args.patch_size=2048
-    if args.model_type in ['sqmil_nic']:
+    if args.model_type in ['smmile']:
             dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/renal_subtyping_npy.csv',
                                 data_dir = os.path.join(args.data_root_dir),
                                 data_mag = '1_512',
@@ -167,7 +167,7 @@ elif args.task == 'renal_subtype':
 elif args.task == 'lung_subtype':
     args.n_classes=2
     args.patch_size=2048
-    if args.model_type in ['sqmil_nic']:
+    if args.model_type in ['smmile']:
             dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/lung_subtyping_npy.csv',
                                 data_dir = os.path.join(args.data_root_dir),
                                 data_mag = '1_512',
@@ -183,7 +183,7 @@ elif args.task == 'lung_subtype':
 elif args.task == 'ovarian_subtype':
     args.n_classes=5
     args.patch_size=512
-    if args.model_type in ['sqmil_nic']:
+    if args.model_type in ['smmile']:
             dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/ovarian_subtyping_npy.csv',
                                 data_dir = os.path.join(args.data_root_dir),
                                 data_mag = '0_512',
@@ -241,7 +241,7 @@ if __name__ == "__main__":
         all_inst_acc.append(inst_acc)
         all_acc.append(1-test_error)
         df.to_csv(os.path.join(args.save_dir, 'fold_{}.csv'.format(folds[ckpt_idx])), index=False)
-        df_inst.to_csv(os.path.join(args.save_dir, 'SQMILS_inst_fold_{}_inst.csv'.format(folds[ckpt_idx])), index=False)
+        df_inst.to_csv(os.path.join(args.save_dir, 'smmile_inst_fold_{}_inst.csv'.format(folds[ckpt_idx])), index=False)
 
     final_df = pd.DataFrame({'folds': folds, 'test_auc': all_auc, 'test_acc': all_acc, 'test_iauc': all_inst_auc, 'test_iacc':all_inst_acc})
     if len(folds) != args.k:

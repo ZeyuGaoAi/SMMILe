@@ -1,8 +1,8 @@
 import os
 import argparse
+import glob
 import numpy as np
 from skimage import segmentation
-import pandas as pd
 from tqdm import tqdm
 
 def get_nic_with_coord(features, coords, size, inst_label):
@@ -92,28 +92,28 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Process WSIs for Superpixel Segmentation")
     parser.add_argument('--size', type=int, default=2048, help='Patch size of each individual feature')
-    parser.add_argument('--file_suffix', type=str, default='_1_512.npy', help='Suffix for numpy files')
+    parser.add_argument('--file_suffix', type=str, default='*.npy', help='Suffix for numpy files')
     parser.add_argument('--n_segments_persp', type=int, default=16, help='Number of patches per super-patch')
+    parser.add_argument('--keyword_feature', type=str, default='feature2', help='feature keyword in npy file, feature2 is the 1024 dim of resnet')
     parser.add_argument('--compactness', type=int, default=50, help='Compactness for SLIC')
-    parser.add_argument('--file_path', type=str, default='/path/to/dataset.csv', help='File path for dataset CSV')
-    parser.add_argument('--fea_dir', type=str, default='/path/to/embeddings/', help='Directory for feature embeddings of WSIs')
-    parser.add_argument('--sp_dir', type=str, default='/path/to/superpixel_saving/sp_n%d_c%d_%d/', help='Directory for saving superpixel segmentation results')
+    parser.add_argument('--fea_dir', type=str, default='/home/z/zeyugao/dataset/WSIData/TCGARenal/res50/', help='Directory for feature embeddings of WSIs')
+    parser.add_argument('--sp_dir', type=str, default='/home/z/zeyugao/dataset/WSIData/TCGARenal/sp_n%d_c%d_%d/', help='Directory for saving superpixel segmentation results')
     
     args = parser.parse_args()
 
     args.sp_dir = args.sp_dir % (args.n_segments_persp, args.compactness, args.size) # superpixel result saving dictionary of WSIs
     print("Superpixel Segmentation Results will be saved to: %s" % args.sp_dir)
 
-    df = pd.read_csv(args.file_path)
+    file_list = glob.glob(os.path.join(args.fea_dir, args.file_suffix))
 
     if not os.path.exists(args.sp_dir):
         os.mkdir(args.sp_dir)
 
-    for i in tqdm(range(df.shape[0])):
+    for fea_path in tqdm(file_list):
         
-        fea_path = os.path.join(args.fea_dir, df.iloc[i,1])+args.file_suffix
+        base_name = os.path.basename(fea_path)
         record = np.load(fea_path, allow_pickle=True)
-        features = record[()]['feature']
+        features = record[()][args.keyword_feature]
         
         coords = record[()]['index']
         if type(coords[0]) is np.ndarray:
@@ -134,13 +134,14 @@ if __name__ == "__main__":
         m_slic = segmentation.slic(data, n_segments=n_segments, mask=mask, compactness=args.compactness, start_label=1).T
         m_adj = generate_adjacency_matrix(m_slic)
         
-        sp_path = os.path.join(args.sp_dir, df.iloc[i,1]) + args.file_suffix
+        sp_path = os.path.join(args.sp_dir, base_name)
         
         sp_cotents = {}
         sp_cotents['m_slic'] = m_slic
         sp_cotents['m_adj'] = m_adj
         
         if np.max(m_slic) != (m_adj.shape[0]-1):
+            print(fea_path)
             print(np.max(m_slic))
             print(m_adj.shape)
 

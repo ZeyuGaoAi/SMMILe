@@ -3,13 +3,13 @@ n_classes: 3
 task: 'renal_subtype'
 
 # configs of path
-data_root_dir: '/home3/gzy/Renal/feature_resnet/' # patch embedding path
-data_sp_dir: '/home3/gzy/Renal/sp_n16_c50_2048/' # superpixel segmentation map path
+data_root_dir: '/home/z/zeyugao/dataset/WSIData/TCGARenal/res50/' # patch embedding path
+data_sp_dir: '/home/z/zeyugao/dataset/WSIData/TCGARenal/sp_n16_c50_2048/' # superpixel segmentation map path
 label_frac: 1.0
 models_dir: None # set model path for second round instance refinement training
 
 results_dir: './results/'
-exp_code: 'renal_subtyping_smmile_res50_1512_5fold'
+exp_code: 'renal_subtyping_smmile_noinr_res50_1512_5fold'
 
 # configs of training
 seed: 1

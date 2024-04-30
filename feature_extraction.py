@@ -124,7 +124,7 @@ def main(args):
         
         # 使用tqdm显示进度
         results = []
-        for future in tqdm.tqdm(concurrent.futures.as_completed(futures), total=len(data_list)):
+        for future in tqdm(concurrent.futures.as_completed(futures), total=len(data_list)):
             data_id = futures[future]
             try:
                 result = future.result()
@@ -138,10 +138,10 @@ def main(args):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Process WSI data")
-    parser.add_argument('--feature_dir', type=str, default='/home/z/zeyugao/dataset/WSIData/TCGARenal/res50/')
-    parser.add_argument('--anno_dir', type=str, default='/home/z/zeyugao/dataset/WSIData/TCGARenal/annotation/')
-    parser.add_argument('--wsi_dir', type=str, default='/home/z/zeyugao/dataset/TCGA-RCC/')
-    parser.add_argument('--file_list_path', type=str, default='/home/z/zeyugao/dataset/WSIData/TCGARenal/annotated_slide_list.txt')
+    parser.add_argument('--feature_dir', type=str, default='/home/z/zeyugao/dataset/WSIData/TCGARenal/res50/', help='dictionary path for saving extracted embeddings')
+    parser.add_argument('--anno_dir', type=str, default='/home/z/zeyugao/dataset/WSIData/TCGARenal/annotation/', help='dictionary path for pixel annotations')
+    parser.add_argument('--wsi_dir', type=str, default='/home/z/zeyugao/dataset/TCGA-RCC/', help='dictionary path for original WSI(svs) files')
+    parser.add_argument('--file_list_path', type=str, default='/home/z/zeyugao/dataset/WSIData/TCGARenal/slide_list.txt', help='list for WSIs')
     parser.add_argument('--num_workers', type=int, default=5, help='Number of workers for ThreadPoolExecutor')
     parser.add_argument('--patch_size', type=int, default=512)
     parser.add_argument('--step_size', type=int, default=512)

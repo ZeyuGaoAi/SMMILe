@@ -1,18 +1,14 @@
-import numpy as np
-
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from SMMILe.single.models.model_smmile import SMMILe, SMMILe_SINGLE
-import pdb
 import os
+import torch
+import numpy as np
 import pandas as pd
 from utils.utils import *
 from utils.core_utils import Accuracy_Logger
-from sklearn.metrics import roc_auc_score, roc_curve, auc, accuracy_score, classification_report
+from sklearn.metrics import roc_auc_score, roc_curve, accuracy_score, classification_report
 from sklearn.metrics import auc as calc_auc
 from sklearn.preprocessing import label_binarize
-import matplotlib.pyplot as plt
+
+from SMMILe.single.models.model_smmile import SMMILe, SMMILe_SINGLE
 
 def initiate_model(args, ckpt_path):
     print('Init Model')    
