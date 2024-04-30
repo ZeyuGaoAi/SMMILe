@@ -2,15 +2,11 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from SMMILe.single.models.model_smmile import SMMILe, SMMILe_SINGLE
+from models.model_smmile import SMMILe, SMMILe_SINGLE
 import pdb
 import os
 import pandas as pd
 from utils.utils import *
-from utils.core_utils import Accuracy_Logger
-from sklearn.metrics import roc_auc_score, roc_curve, auc, accuracy_score, classification_report
-from sklearn.metrics import auc as calc_auc
-from sklearn.preprocessing import label_binarize
 import matplotlib.pyplot as plt
 
 def get_nic_with_coord(features, coords, size):
@@ -132,8 +128,9 @@ def main_eval(npy_path,sp_path, model_type, model_size, drop_out, drop_rate, n_c
 
 if __name__ == "__main__":
 
-    npy_path = '/home3/gzy/Renal/feature_resnet/TCGA-B4-5838-01Z-00-DX1.0CC46AA4-5C2C-46FD-9C94-BD96FF287218_1_512.npy'
-    sp_path = '/home3/gzy/Renal/sp_n9_c50_2048/TCGA-B4-5838-01Z-00-DX1.0CC46AA4-5C2C-46FD-9C94-BD96FF287218_1_512.npy'
+    npy_path = '/home/z/zeyugao/dataset/smmile_test/Res50/TCGA-B0-4945-01Z-00-DX1.590b650c-c9cb-4601-886c-fde0ccd9b90d_1_512.npy'
+    sp_path = '/home/z/zeyugao/dataset/smmile_test/SP16/TCGA-B0-4945-01Z-00-DX1.590b650c-c9cb-4601-886c-fde0ccd9b90d_1_512.npy'
+    ckpt_path = '/home/z/zeyugao/SMMILe/ckpt/smmile_renal/s_0_checkpoint_best.pt'
     model_type = 'smmile'
     model_size = 'small'
     drop_out = True
@@ -143,9 +140,8 @@ if __name__ == "__main__":
     n_refs = 3
     patch_size=2048
     inst_refinement = True
-    ckpt_path = '/home/z/zeyugao/SMMILe/ckpt/smmile_renal/s_0_checkpoint_best.pt'
 
-    patient_result, df_inst  = main_eval(npy_path,sp_path, model_type, model_size, drop_out, drop_rate, n_classes, fea_dim, patch_size,n_refs, ckpt_path, inst_refinement)
+    patient_result, df_inst  = main_eval(npy_path, sp_path, model_type, model_size, drop_out, drop_rate, n_classes, fea_dim, patch_size, n_refs, ckpt_path, inst_refinement)
     print(patient_result)
     print(df_inst)
 

@@ -6,8 +6,10 @@ Accurate spatial quantification in computational pathology with multiple instanc
 For HPC:
 ```
 module purge
-module load GCCcore/8.3.0 Python/3.7.4
-module load GCC/8.3.0 CUDA/10.1.243 cuDNN/7.6.4.38
+module load GCCcore/11.3.0 Python/3.10.4
+module load GCCcore/11.3.0 OpenSlide/3.4.1-largefiles
+module load CUDA/11.3.1
+module load cuDNN/8.2.1.32-CUDA-11.3.1
 python -m venv ./pyvenv/smmile
 source ./pyvenv/smmile/bin/activate
 pip install --upgrade pip

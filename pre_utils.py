@@ -1,4 +1,3 @@
-import os
 import cv2
 import torch
 import openslide
@@ -11,8 +10,6 @@ import torch
 import torch.nn as nn
 import torchvision.models
 from torchvision import transforms
-from tqdm import tqdm
-from glob import glob
 from torchvision import transforms
 
 # from ctran import ctranspath
@@ -55,15 +52,16 @@ def extract_features(model, patches):
     f3=[]
     f2=[]
     f1=[]
+    batch_size = 20
     if len(patches)==0:
-        return f3,f2,f1
+        return f3, f2, f1
     imgs_all = patches   
-    num = len(patches)//50 + (1 if len(patches)%50!=0 else 0)
+    num = len(patches)//batch_size + (1 if len(patches)%batch_size!=0 else 0)
     for k in range(num):
         if k == num-1:
-            imgs = np.stack(imgs_all[k*50:len(patches)])
+            imgs = np.stack(imgs_all[k*batch_size:len(patches)])
         else:
-            imgs = np.stack(imgs_all[k*50:(k+1)*50])
+            imgs = np.stack(imgs_all[k*batch_size:(k+1)*batch_size])
         imgs = img_normalize(imgs)
         imgs = imgs.cuda()
         with torch.no_grad():
@@ -76,7 +74,7 @@ def extract_features(model, patches):
     f2 = torch.cat(f2)
     f1 = torch.cat(f1)
     
-    return f3,f2,f1
+    return f3, f2, f1
 
 
 def mkdic(path):

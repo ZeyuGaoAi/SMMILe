@@ -3,7 +3,7 @@ import cv2
 import argparse
 from tqdm import tqdm
 import numpy as np
-from glob import glob
+import glob
 import pandas as pd
 import concurrent.futures
 
@@ -24,9 +24,6 @@ def extract_embedding_wsi(i, params):
     anno_list = params['anno_list']
     feature_dir = params['feature_dir']
     model = params['model']
-
-    # renal tcga # red, green -> tumor
-    color_dict = [[255,0,0],[0,255,0]]
     
     wsi_path = wsi_dir + '%s/%s' % (file_list.iloc[i]['new_folder'], file_list.iloc[i]['filename'])
     
@@ -57,7 +54,7 @@ def extract_embedding_wsi(i, params):
         inst_labels += [0] * len(fnames)
 
         # for cancer subtypes
-        for color in color_dict:
+        for color in args.color_dict:
             cancer_mask_binary = np.zeros(cancer_mask.shape[:-1])
             cancer_mask_binary[(cancer_mask==color).all(axis=-1)] = 255
             patches, fnames = cut_patches_from_wsi('cancer', wsi_path, binary_mask, cancer_mask_binary, level, patch_size, 
@@ -92,11 +89,14 @@ def main(args):
     file_list = pd.read_csv(args.file_list_path)
     anno_list = glob.glob(os.path.join(args.anno_dir, '*.png'))
 
+    # fix the folder unpaired problem of two hpcs
     wsi_path_all = glob.glob(os.path.join(args.wsi_dir, "*/*.svs"))
     wsi_path_all = pd.DataFrame(wsi_path_all)
     wsi_path_all['new_folder'] = wsi_path_all[0].apply(lambda x: x.split('/')[-2])
     wsi_path_all['filename'] = wsi_path_all[0].apply(lambda x: x.split('/')[-1])
     file_list = file_list.merge(wsi_path_all, how='inner', on='filename')
+
+    print("Data need to process: %d \n" % file_list.shape[0])
 
     model = ResNet50(pretrained=True)
     model = model.cuda()
@@ -151,5 +151,8 @@ if __name__ == "__main__":
     parser.add_argument('--cancer_rates', type=float, default=0.25, help='cancerous threshold for counting cancerous patches')
 
     args = parser.parse_args()
+
+    # renal tcga # red, green -> tumor
+    args.color_dict = [[255,0,0],[0,255,0]]
 
     main(args)
