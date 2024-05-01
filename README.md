@@ -16,6 +16,40 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
+# Usage
+## Preprocessing
+1. Embedding Extraction
+```
+python feature_extraction.py --set_your_params_here
+```
+2. Superpixel Generation
+```
+python superpixel_generation.py --set_your_params_here
+```
+
+Binary or Multi-class dataset: ``` cd single/ ```
+Multi-label dataset: ``` cd multi/ ```
+## Training
+
+1. Setup the config of stage 1, for example, ```./single/configs/config_renal_smmile_r1.yaml```
+```
+python main.py --config ./configs/config_renal_smmile_r1.yaml
+```
+2. Setup the config of stage 2, for example, ```./single/configs/config_renal_smmile_r1.yaml```
+```
+python main.py --config ./configs/config_renal_smmile_r2.yaml
+```
+
+## Evaluation
+The whole test set:
+```
+python eval.py --data_root_dir /path/to/extracted/embedding/folder/ --results_dir /path/to/trained/model/folder/
+```
+The single WSI demo (several paths need to be set in demo.py):
+```
+python demo.py
+```
+
 # License
 
 This project is licensed under the GPLv3 License and is available for non-commercial academic purposes.
