@@ -384,8 +384,6 @@ class Generic_MIL_SP_Dataset(Generic_WSI_Classification_Dataset):
             label_dict = [[0,0,1],[0,1,0],[1,0,0],[0,1,1],[1,1,0],[1,0,1],[1,1,1]] # gastric low high muc
         elif task == 'gleason_subtype':
             label_dict = [[0,0,0], [0,0,1], [0,1,0], [0,1,1], [1,0,0], [1,0,1], [1,1,0], [1,1,1]] # gleason
-        elif task == 'cervical_subtype':
-            label_dict =  [[0,0,0], [0,0,1], [0,1,0], [0,1,1], [1,0,0], [1,0,1], [1,1,0], [1,1,1]] # cervical
             
         return label_dict[label]
     
@@ -436,25 +434,16 @@ class Generic_MIL_SP_Dataset(Generic_WSI_Classification_Dataset):
             inst_label[inst_label==1]=3 # normal gland (1) -> back ground (3)
             inst_label[inst_label==2]=1 # Inflammation (2) -> Inflammation (1)
             inst_label[inst_label==3]=2 # back ground (3) -> back ground (2)
-        elif self.task=='renal_subtype':
-            inst_label[inst_label==0]=3
-            inst_label[inst_label==1]=label
-        elif self.task=='cervical_subtype':
-            inst_label[inst_label==0]=4 # normal (0) -> normal (4)
-            inst_label[inst_label==1]=0 # CN1 (1) -> CN1 (0)
-            inst_label[inst_label==2]=1 # CN2 (2) -> CN2 (1)
-            inst_label[inst_label==3]=2 # CN3 (3) -> CN3 (2)
-            inst_label[inst_label==4]=3 # normal (4) -> normal (3)
 
         inst_label = list(inst_label)
         
         features_nic, mask, inst_label_nic_nd, coords_nic = \
             self.get_nic_with_coord(features, coords_nd, self.size, inst_label)
         
-        if inst_label_nic_nd!=[]:
-            inst_label_nic = list(inst_label_nic_nd[np.where(mask==1)])
-        else:
+        if isinstance(inst_label_nic_nd, list):
             inst_label_nic = inst_label_nic_nd
+        else:
+            inst_label_nic = list(inst_label_nic_nd[np.where(mask==1)])
         
         return features_nic, label, [coords_nic, mask, sp, adj, coords_nd], inst_label_nic
         
