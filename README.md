@@ -28,9 +28,10 @@ python feature_extraction.py --set_your_params_here
 python superpixel_generation.py --set_your_params_here
 ```
 
+## Training
+
 Binary or Multi-class dataset: ``` cd single/ ```
 Multi-label dataset: ``` cd multi/ ```
-## Training
 
 1. Setup the config of stage 1, for example, ```./single/configs/config_renal_smmile_r1.yaml```
 ```
