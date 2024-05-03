@@ -8,7 +8,7 @@ from sklearn.metrics import roc_auc_score, roc_curve, accuracy_score, classifica
 from sklearn.metrics import auc as calc_auc
 from sklearn.preprocessing import label_binarize
 
-from SMMILe.single.models.model_smmile import SMMILe, SMMILe_SINGLE
+from models.model_smmile import SMMILe, SMMILe_SINGLE
 
 def initiate_model(args, ckpt_path):
     print('Init Model')    

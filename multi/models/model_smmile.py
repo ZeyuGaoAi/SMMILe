@@ -256,8 +256,8 @@ class IAMIL(nn.Module):
         return final_score, Y_prob, Y_hat, ref_score, results_dict
     
 class SMMILe(IAMIL):
-    def __init__(self, gate=True, size_arg = "small", dropout = False, n_classes=2, 
-                 n_refs=3, drop_rate=0.1, fea_dim=1024, multi_label = False,
+    def __init__(self, gate=True, size_arg = "small", dropout = True, n_classes=2, 
+                 n_refs=3, drop_rate=0.25, fea_dim=1024, multi_label = False,
                  instance_loss_fn=nn.CrossEntropyLoss(reduction='none')):
         
         nn.Module.__init__(self) # 3x3 is better for gleason

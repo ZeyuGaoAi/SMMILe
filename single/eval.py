@@ -24,7 +24,7 @@ parser.add_argument('--results_dir', type=str, default='./results_renal/ablation
                     'the directory containing models_exp_code relative to project root (default: ./results)')
 parser.add_argument('--save_exp_code', type=str, default=None,
                     help='experiment code to save eval results')
-parser.add_argument('--models_exp_code', type=str, default='renal_subtyping_WSODNIC_res50_1512_5fold_s1',
+parser.add_argument('--models_exp_code', type=str, default='renal_subtyping_smmile_res50_1512_5fold_s1',
                     help='experiment code to load trained models (directory under results_dir containing model checkpoints')
 parser.add_argument('--splits_dir', type=str, default=None,
                     help='splits directory, if using custom splits other than what matches the task (default: None)')
@@ -96,13 +96,8 @@ assert os.path.isdir(args.splits_dir)
 args.task=conf['task']
 args.fea_dim=conf['fea_dim']
 args.model_type=conf['model_type']
-if args.model_type=='wsod_nic':
-    args.model_type='smmile'
-elif args.model_type=='wsod_nic_single':
-    args.model_type='smmile_single'
 args.model_size=conf['model_size']
 args.drop_out=conf['use_drop_out']
-# args.drop_rate=conf['drop_rate']
 args.drop_with_score=conf['drop_with_score']
 args.superpixel=conf['superpixel']
 args.data_sp_dir=conf['data_sp_dir']
@@ -216,8 +211,8 @@ if args.fold == -1:
 else:
     folds = range(args.fold, args.fold+1)
 
-ckpt_paths = [os.path.join(args.models_dir, 's_{}_checkpoint_best.pt'.format(fold)) for fold in folds]
-# ckpt_paths = [os.path.join(args.models_dir, 's_{}_checkpoint.pt'.format(fold)) for fold in folds]
+# ckpt_paths = [os.path.join(args.models_dir, 's_{}_checkpoint_best.pt'.format(fold)) for fold in folds]
+ckpt_paths = [os.path.join(args.models_dir, 's_{}_checkpoint.pt'.format(fold)) for fold in folds]
 datasets_id = {'train': 0, 'val': 1, 'test': 2, 'all': -1}
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ import pandas as pd
 from datasets.dataset_nic import save_splits
 from models.model_smmile import SMMILe
 from sklearn.preprocessing import label_binarize
-from sklearn.metrics import roc_auc_score, roc_curve, accuracy_score, classification_report
+from sklearn.metrics import roc_curve, accuracy_score, classification_report
 from sklearn.metrics import auc as calc_auc
 from sklearn.metrics import precision_score, recall_score, f1_score
 from utils.bi_tempered_loss_pytorch import bi_tempered_binary_logistic_loss

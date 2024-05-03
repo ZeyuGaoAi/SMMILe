@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from utils.utils import initialize_weights
 import numpy as np
-from random import random, randint
+from random import randint
 
 """
 Attention Network without Gating (2 fc layers)
@@ -244,8 +244,8 @@ class IAMIL(nn.Module):
         return final_score, Y_prob, Y_hat, results_dict
     
 class SMMILe(IAMIL):
-    def __init__(self, gate=True, size_arg = "small", dropout = False,
-                 n_classes=2, n_refs=3, drop_rate=0.1, fea_dim=1024,
+    def __init__(self, gate=True, size_arg = "small", dropout = True,
+                 n_classes=2, n_refs=3, drop_rate=0.25, fea_dim=1024,
                  instance_loss_fn=nn.CrossEntropyLoss(reduction='none')):
         nn.Module.__init__(self)
         
@@ -504,13 +504,12 @@ class SMMILe(IAMIL):
 
             Y_hat = torch.topk(torch.mean(torch.stack(Y_prob), dim=0), 1, dim = 0)[1]
 
-            # # max pooling for each superpixel
-            # sp_score_max = torch.max(torch.stack(all_sp_score), dim=0)[0]
-            # sp_score_mean = torch.mean(torch.stack(all_sp_score), dim=0)
+            # max pooling for each superpixel
+            sp_score_mean = torch.mean(torch.stack(all_sp_score), dim=0)
             
-            # # aggregation for sp
-            # for sp_index in range(len(sp_list)):
-            #     final_score_sp[sp==sp_list[sp_index]] = sp_score_mean[sp_index]
+            # aggregation for sp
+            for sp_index in range(len(sp_list)):
+                final_score_sp[sp==sp_list[sp_index]] = sp_score_mean[sp_index]
             
         ref_score = final_score
         
@@ -546,8 +545,8 @@ class SMMILe(IAMIL):
         return final_score_sp, Y_prob, Y_hat, ref_score, results_dict
 
 class SMMILe_SINGLE(SMMILe):
-    def __init__(self, gate=True, size_arg = "small", dropout = False,
-                 n_classes=1, n_refs=3, drop_rate=0.1, fea_dim=1024,
+    def __init__(self, gate=True, size_arg = "small", dropout = True,
+                 n_classes=1, n_refs=3, drop_rate=0.25, fea_dim=1024,
                  instance_loss_fn=nn.CrossEntropyLoss(reduction='none')):
         nn.Module.__init__(self)
         
@@ -811,13 +810,7 @@ class SMMILe_SINGLE(SMMILe):
                         drop_mask = self.drop_with_score_single(sp_score, label) # N * cls
                         sp_score_droped = sp_score * drop_mask
                         Y_prob_sp = torch.clamp(torch.sum(sp_score_droped, dim=0), min=epsilon, max=1-epsilon) # 3
-                        Y_prob.append(Y_prob_sp)
-
-                # use original Y_hat is better
-
-                # # max pooling for each superpixel
-                # sp_score_max = torch.max(torch.stack(all_sp_score), dim=0)[0]
-                # sp_score_mean = torch.mean(torch.stack(all_sp_score), dim=0)
+                        Y_prob.append(Y_prob_sp) 
             
             
         ref_score = final_score_sp
