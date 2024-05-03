@@ -4,7 +4,7 @@
 
 # Installation
 
-For HPC:
+For HPC NVIDIA A100:
 ```
 module purge
 module load GCCcore/11.3.0 Python/3.10.4
@@ -16,6 +16,17 @@ source ./pyvenv/smmile/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
+
+The original results published in the paper are obtained from:
+```
+GeForce RTX 2080 Ti
+GCC 7.3.0
+Python 3.7.3
+CUDA 11.0
+torch 1.7.1+cu110
+torchvision 0.8.2+cu110
+```
+
 
 # Usage
 ## Preprocessing
@@ -45,7 +56,7 @@ python main.py --config ./configs/config_renal_smmile_r2.yaml
 ## Evaluation
 The whole test set:
 ```
-python eval.py --data_root_dir /path/to/extracted/embedding/folder/ --results_dir /path/to/trained/model/folder/
+python eval.py --data_root_dir /path/to/extracted/embedding/folder/ --results_dir /path/to/trained/models/folder/ --models_exp_code renal_subtyping_smmile_res50_1512_5fold_s1
 ```
 The single WSI demo (several paths need to be set in demo.py):
 ```
