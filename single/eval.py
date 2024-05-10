@@ -1,16 +1,10 @@
 from __future__ import print_function
-
-import numpy as np
-
 import argparse
 import torch
-import torch.nn as nn
 import pdb
 import os
 import pandas as pd
 from utils.utils import *
-from math import floor
-import matplotlib.pyplot as plt
 from datasets.dataset_nic import Generic_MIL_SP_Dataset as NIC_MIL_SP_Dataset
 import h5py
 from utils.eval_utils import *

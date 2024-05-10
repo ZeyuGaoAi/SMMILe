@@ -5,7 +5,7 @@ import numpy as np
 task = 'gastric_subtype'
 csv_path = './dataset_csv/gastric_subtyping_npy.csv'
 k_folds = 5
-split_dir = 'splits/'+ str(task) + '_{}'.format(int(100))
+split_dir = 'splits/'+ str(task) + '_{}'.format(int(100/k_folds*(k_folds-1)))
 os.makedirs(split_dir, exist_ok=True)
 
 dataset = pd.read_csv(csv_path)
