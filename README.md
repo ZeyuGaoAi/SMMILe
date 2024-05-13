@@ -56,12 +56,17 @@ python main.py --config ./configs/config_renal_smmile_r2.yaml
 ## Evaluation
 The whole test set:
 ```
-python eval.py --data_root_dir /path/to/extracted/embedding/folder/ --results_dir /path/to/trained/models/folder/ --models_exp_code renal_subtyping_smmile_res50_1512_5fold_s1
+python eval.py --data_root_dir /path/to/extracted/embedding/folder/ --data_sp_dir /path/to/superpixels/folder --results_dir /path/to/trained/models/folder/ --models_exp_code renal_subtyping_smmile_res50_1512_5fold_s1
 ```
 The single WSI demo (several paths need to be set in demo.py):
 ```
 python demo.py
 ```
+
+## Demo Datasets and Models
+
+We provide the extracted embeddings (res50.zip) and superpixels (sp_n16_c50_2048.zip) of TCGA-RCC on our [Hugging Face dataset page](https://huggingface.co/datasets/zeyugao/SMMILe_Renal3).
+We provide the trained SMMILe models of each fold for TCGA-RCC on our [Hugging Face model page](https://huggingface.co/zeyugao/SMMILe_Renal3).
 
 # License
 
