@@ -48,7 +48,7 @@ Multi-label dataset: ``` cd multi/ ```
 ```
 python main.py --config ./configs/config_renal_smmile_r1.yaml
 ```
-2. Setup the config of stage 2, for example, ```./single/configs/config_renal_smmile_r1.yaml```
+2. Setup the config of stage 2, for example, ```./single/configs/config_renal_smmile_r2.yaml```
 ```
 python main.py --config ./configs/config_renal_smmile_r2.yaml
 ```
