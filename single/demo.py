@@ -179,7 +179,7 @@ if __name__ == "__main__":
     svs_path = '/home/z/zeyugao/dataset/TCGA-RCC/37d08405-fd8f-4a14-8327-4afe52fd8d8d/TCGA-B0-4945-01Z-00-DX1.590b650c-c9cb-4601-886c-fde0ccd9b90d.svs'
     npy_path = '/home/z/zeyugao/dataset/WSIData/TCGARenal/res50/TCGA-B0-4945-01Z-00-DX1.590b650c-c9cb-4601-886c-fde0ccd9b90d_1_512.npy'
     sp_path = '/home/z/zeyugao/dataset/WSIData/TCGARenal/sp_n16_c50_2048/TCGA-B0-4945-01Z-00-DX1.590b650c-c9cb-4601-886c-fde0ccd9b90d_1_512.npy'
-    ckpt_path = '/home/z/zeyugao/SMMILe/ckpt/smmile_renal/s_0_checkpoint_best.pt'
+    ckpt_path = '/home/z/zeyugao/SMMILe/ckpt/smmile_renal/s_0_checkpoint.pt'
     output_path = './TCGA-B0-4945_viz.png'
     model_type = 'smmile'
     model_size = 'small'
