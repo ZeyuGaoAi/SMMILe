@@ -26,7 +26,13 @@ CUDA 11.0
 torch 1.7.1+cu110
 torchvision 0.8.2+cu110
 ```
+## Demo Datasets and Models
 
+The original WSI files (.svs) can be downloaded from [GDC Portal page](https://portal.gdc.cancer.gov/v1/repository).
+
+We provide the extracted embeddings (res50.zip) and superpixels (sp_n16_c50_2048.zip) of TCGA-RCC on our [Hugging Face dataset page](https://huggingface.co/datasets/zeyugao/SMMILe_Renal3).
+
+We provide the trained SMMILe models of each fold for TCGA-RCC on our [Hugging Face model page](https://huggingface.co/zeyugao/SMMILe_Renal3).
 
 # Usage
 ## Preprocessing
@@ -62,14 +68,6 @@ The single WSI demo (several paths need to be set in demo.py):
 ```
 python demo.py
 ```
-
-## Demo Datasets and Models
-
-The original WSI files (.svs) can be downloaded from [GDC Portal page](https://portal.gdc.cancer.gov/v1/repository).
-
-We provide the extracted embeddings (res50.zip) and superpixels (sp_n16_c50_2048.zip) of TCGA-RCC on our [Hugging Face dataset page](https://huggingface.co/datasets/zeyugao/SMMILe_Renal3).
-
-We provide the trained SMMILe models of each fold for TCGA-RCC on our [Hugging Face model page](https://huggingface.co/zeyugao/SMMILe_Renal3).
 
 # License
 
