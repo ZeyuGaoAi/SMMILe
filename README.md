@@ -28,7 +28,7 @@ torchvision 0.8.2+cu110
 ```
 ## Demo Datasets and Models
 
-The original WSI files (.svs) can be downloaded from [GDC Portal page](https://portal.gdc.cancer.gov/v1/repository).
+The original WSI files (.svs) of TCGA data can be downloaded from [GDC Portal page](https://portal.gdc.cancer.gov/v1/repository).
 
 We provide the extracted embeddings (res50.zip) and superpixels (sp_n16_c50_2048.zip) of TCGA-RCC on our [Hugging Face dataset page](https://huggingface.co/datasets/zeyugao/SMMILe_Renal3).
 
