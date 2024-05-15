@@ -34,6 +34,8 @@ We provide the extracted embeddings (res50.zip) and superpixels (sp_n16_c50_2048
 
 We provide the trained SMMILe models of each fold for TCGA-RCC on our [Hugging Face model page](https://huggingface.co/zeyugao/SMMILe_Renal3).
 
+Feel free to try our evaluation part. With the original WSI file, ```demo.py``` can generate the visualized spatial quantification result as well.
+
 # Usage
 ## Preprocessing
 1. Embedding Extraction
