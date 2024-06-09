@@ -1,5 +1,7 @@
-# SMMILe
-**Accurate spatial quantification in computational pathology with multiple instance learning**
+SMMILe <img src="SmmileIcon.jpg" width="140px" align="right" />
+===========
+## Accurate spatial quantification in computational pathology with multiple instance learning.
+
 ![Graphic](SMMILeGraphic.png)
 
 # Installation
