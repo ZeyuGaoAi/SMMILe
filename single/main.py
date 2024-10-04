@@ -289,6 +289,7 @@ elif args.task == 'lung_subtype':
                         label_dict = {'luad':0, 'lusc':1},
                         patient_strat= False,
                         ignore=[])
+    
 elif args.task == 'ovarian_subtype':
     dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/ovarian_subtyping_npy.csv',
                         data_dir = os.path.join(args.data_root_dir),
