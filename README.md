@@ -44,7 +44,7 @@ python superpixel_generation.py --set_your_params_here
 Binary or Multi-class dataset: ``` cd single/ ```
 Multi-label dataset: ``` cd multi/ ```
 
-1. Setup the config of stage 1, for example, ```./single/configs_rcc/config_renal_smmile_r1_conch.yaml```, the current config is set for the base version without any module.
+1. Setup the config of stage 1, for example, ```./single/configs_rcc/config_renal_smmile_r1_conch.yaml```, the current config is set for the base version without any module. 
 ```
 python main.py --config ./configs_rcc/config_renal_smmile_r1_conch.yaml \
                --drop_with_score --D 1 --superpixel --exp_code smmile_d1sp \
@@ -57,6 +57,7 @@ python main.py --config ./configs_rcc/config_renal_smmile_r1_conch.yaml  --drop_
                --models_dir /home/z/zeyugao/SMMILe/single/results_conch_rcc/smmile_d1sp_s1 \
                --max_epochs 20
 ```
+Note that using ```--consistency``` for the dataset containing normal cases in both stages.
 
 ## Evaluation
 The whole test set:
