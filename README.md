@@ -23,7 +23,7 @@ pip install -r requirements.txt
 
 The original WSI files (.svs) of TCGA data can be downloaded from [GDC Portal page](https://portal.gdc.cancer.gov/v1/repository).
 
-We provide six datasets' extracted embeddings and superpixels on our [Hugging Face dataset page](https://huggingface.co/datasets/zeyugao/SMMILe_Datasets).
+We provide extracted embeddings (ResNet-50, Conch) and superpixel segmentation results on our [Hugging Face dataset page](https://huggingface.co/datasets/zeyugao/SMMILe_Datasets).
 
 
 # Usage
