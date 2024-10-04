@@ -2,6 +2,7 @@ SMMILe <img src="SmmileIcon.jpg" width="140px" align="right" />
 ===========
 ## Accurate spatial quantification in computational pathology with multiple instance learning.
 ![Graphic](SMMILe-graphical-abstract.png)
+## Framework
 ![Graphic](SMMILeGraphic.png)
 
 # Installation
@@ -77,6 +78,8 @@ python demo.py
 This project is licensed under the GPLv3 License and is available for non-commercial academic purposes.
 
 # Acknowledgements
+
+We acknowledge funding and support from Cancer Research UK and the Cancer Research UK Cambridge Centre [CTRQQR-2021-100012], The Mark Foundation for Cancer Research [RG95043], GE HealthCare, and the CRUK National Cancer Imaging Translational Accelerator (NCITA) [A27066]. Additional support was also provided by the National Institute of Health Research (NIHR) Cambridge Biomedical Research Centre [NIHR203312] and EPSRC Tier-2 capital grant [EP/P020259/1]. Calculations were performed in part using the Sulis Tier 2 HPC platform hosted by the Scientific Computing Research Technology Platform at the University of Warwick. Sulis is funded by EPSRC Grant EP/T022108/1 and the HPC Midlands+ consortium. The funders had no role in study design, data collection and analysis, decision to publish, or preparation of the manuscript.
 
 # Citation
 
