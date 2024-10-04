@@ -46,14 +46,16 @@ Multi-label dataset: ``` cd multi/ ```
 
 1. Setup the config of stage 1, for example, ```./single/configs_rcc/config_renal_smmile_r1_conch.yaml```, the current config is set for the base version without any module.
 ```
-python main.py --config ./configs_rcc/config_renal_smmile_r1_conch.yaml --drop_with_score --D 1 --superpixel --exp_code smmile_d1sp
---max_epochs 40
+python main.py --config ./configs_rcc/config_renal_smmile_r1_conch.yaml \
+               --drop_with_score --D 1 --superpixel --exp_code smmile_d1sp \
+               --max_epochs 40
 ```
 2. After stage 1, setup the config of stage 2, for example, ```./single/configs_rcc/config_renal_smmile_r1_conch.yaml```
 ```
-python main.py --config ./configs_rcc/config_renal_smmile_r1_conch.yaml  --drop_with_score --D 1
---superpixel --inst_refinement --mrf --exp_code smmile_d1sp_ref_mrf --max_epochs 20
---models_dir /home/z/zeyugao/SMMILe/single/results_conch_rcc/smmile_d1sp_s1
+python main.py --config ./configs_rcc/config_renal_smmile_r1_conch.yaml  --drop_with_score --D 1 \
+               --superpixel --inst_refinement --mrf --exp_code smmile_d1sp_ref_mrf \
+               --models_dir /home/z/zeyugao/SMMILe/single/results_conch_rcc/smmile_d1sp_s1 \
+               --max_epochs 20
 ```
 
 ## Evaluation
