@@ -19,31 +19,21 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-The original results published in the paper are obtained from:
-```
-GeForce RTX 2080 Ti
-GCC 7.3.0
-Python 3.7.3
-CUDA 11.0
-torch 1.7.1+cu110
-torchvision 0.8.2+cu110
-```
 ## Demo Datasets and Models
 
 The original WSI files (.svs) of TCGA data can be downloaded from [GDC Portal page](https://portal.gdc.cancer.gov/v1/repository).
 
-We provide the extracted embeddings (res50.zip) and superpixels (sp_n16_c50_2048.zip) of TCGA-RCC on our [Hugging Face dataset page](https://huggingface.co/datasets/zeyugao/SMMILe_Renal3).
+We provide six datasets' extracted embeddings and superpixels on our [Hugging Face dataset page](https://huggingface.co/datasets/zeyugao/SMMILe_Datasets).
 
-We provide the trained SMMILe models of each fold for TCGA-RCC on our [Hugging Face model page](https://huggingface.co/zeyugao/SMMILe_Renal3).
-
-Feel free to try our evaluation part. With the original WSI file, ```demo.py``` can generate the visualized spatial quantification result as well.
 
 # Usage
 ## Preprocessing
-1. Embedding Extraction
+1. Embedding Extraction (Customized)
 ```
 python feature_extraction.py --set_your_params_here
 ```
+You can also use the standard preprocessing pipeline provided by [CLAM](https://github.com/mahmoodlab/CLAM).
+
 2. Superpixel Generation
 ```
 python superpixel_generation.py --set_your_params_here
@@ -54,19 +44,25 @@ python superpixel_generation.py --set_your_params_here
 Binary or Multi-class dataset: ``` cd single/ ```
 Multi-label dataset: ``` cd multi/ ```
 
-1. Setup the config of stage 1, for example, ```./single/configs/config_renal_smmile_r1.yaml```
+1. Setup the config of stage 1, for example, ```./single/configs_rcc/config_renal_smmile_r1_conch.yaml```, the current config is set for the base version without any module.
 ```
-python main.py --config ./configs/config_renal_smmile_r1.yaml
+python main.py --config ./configs_rcc/config_renal_smmile_r1_conch.yaml --drop_with_score --D 1 --superpixel --exp_code smmile_d1sp
+--max_epochs 40
 ```
-2. Setup the config of stage 2, for example, ```./single/configs/config_renal_smmile_r2.yaml```
+2. After stage 1, setup the config of stage 2, for example, ```./single/configs_rcc/config_renal_smmile_r1_conch.yaml```
 ```
-python main.py --config ./configs/config_renal_smmile_r2.yaml
+python main.py --config ./configs_rcc/config_renal_smmile_r1_conch.yaml  --drop_with_score --D 1
+--superpixel --inst_refinement --mrf --exp_code smmile_d1sp_ref_mrf --max_epochs 20
+--models_dir /home/z/zeyugao/SMMILe/single/results_conch_rcc/smmile_d1sp_s1
 ```
 
 ## Evaluation
 The whole test set:
 ```
-python eval.py --data_root_dir /path/to/extracted/embedding/folder/ --data_sp_dir /path/to/superpixels/folder --results_dir /path/to/trained/models/folder/ --models_exp_code renal_subtyping_smmile_res50_1512_5fold_s1
+python eval.py --data_root_dir /path/to/extracted/embedding/folder/ \
+               --data_sp_dir /path/to/superpixels/folder/ \
+               --results_dir /path/to/trained/models/folder/ \
+               --models_exp_code smmile_d1sp_ref_mrf_s1 --save_exp_code _conch_rcc
 ```
 The single WSI demo (several paths need to be set in demo.py):
 ```
