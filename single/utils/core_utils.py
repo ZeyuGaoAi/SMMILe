@@ -3,8 +3,9 @@ import torch
 from utils.utils import *
 import os
 import pandas as pd
+from torch.optim import lr_scheduler
 from datasets.dataset_nic import save_splits
-from models.model_smmile import SMMILe, SMMILe_SINGLE
+from models.model_smmile import RAMIL, SMMILe, SMMILe_SINGLE
 from sklearn.preprocessing import label_binarize
 from sklearn.metrics import roc_auc_score, roc_curve, accuracy_score, classification_report
 from sklearn.metrics import auc as calc_auc
@@ -107,8 +108,14 @@ def train(datasets, cur, args):
         writer = None
 
     print('\nInit train/val/test splits...', end=' ')
-    train_split, val_split, test_split = datasets
+
+    if args.reverse_train_val:
+        val_split, train_split, test_split = datasets
+    else:
+        train_split, val_split, test_split = datasets
+
     save_splits(datasets, ['train', 'val', 'test'], os.path.join(args.results_dir, 'splits_{}.csv'.format(cur)))
+
     print('Done!')
     print("Training on {} samples".format(len(train_split)))
     print("Validating on {} samples".format(len(val_split)))
@@ -117,16 +124,13 @@ def train(datasets, cur, args):
     print('\nInit loss function...', end=' ')
 
     args.bi_loss = False
+    loss_fn = nn.functional.binary_cross_entropy
     
-    if args.bag_loss == 'bce':
-        loss_fn = nn.functional.binary_cross_entropy
-        
-    elif args.bag_loss == 'bibce':
-        args.bi_loss = True
-        loss_fn = bi_tempered_binary_logistic_loss
-        
-    else:
+    if args.bag_loss == 'ce':
         loss_fn = nn.CrossEntropyLoss()
+
+    if args.bag_loss == 'bibce':
+        args.bi_loss = True
         
     print('Done!')
     
@@ -134,7 +138,9 @@ def train(datasets, cur, args):
     model_dict = {'dropout': args.drop_out, 'drop_rate': args.drop_rate, 'n_classes': args.n_classes, 
                   'fea_dim': args.fea_dim, "size_arg": args.model_size, 'n_refs': args.n_refs}
 
-    if args.model_type == 'smmile':
+    if args.model_type == 'ramil':
+        model = RAMIL(**model_dict)
+    elif args.model_type == 'smmile':
         model = SMMILe(**model_dict)
     elif args.model_type == 'smmile_single':
         model = SMMILe_SINGLE(**model_dict)
@@ -142,7 +148,7 @@ def train(datasets, cur, args):
         raise NotImplementedError
 
     if args.models_dir is not None:
-        ckpt_path = os.path.join(args.models_dir, 's_{}_checkpoint.pt'.format(cur))
+        ckpt_path = os.path.join(args.models_dir, 's_{}_checkpoint_best.pt'.format(cur))
         if os.path.exists(ckpt_path):
             ckpt = torch.load(ckpt_path)
             model.load_state_dict(ckpt, strict=False)
@@ -156,6 +162,7 @@ def train(datasets, cur, args):
 
     print('\nInit optimizer ...', end=' ')
     optimizer = get_optim(model, args)
+    scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, verbose=True)
     print('Done!')
     
     print('\nInit Loaders...', end=' ')
@@ -179,12 +186,14 @@ def train(datasets, cur, args):
         ref_start = False
     
     for epoch in range(args.max_epochs):
-        if args.model_type in ['smmile']:
+        if args.model_type in ['ramil','smmile']:
             train_loop_smmile(epoch, model, train_loader, optimizer, writer, loss_fn, ref_start, args)
-            stop = validate_smmile(cur, epoch, model, val_loader, early_stopping, writer, loss_fn, ref_start, args)
+            stop = validate_smmile(cur, epoch, model, val_loader, early_stopping, writer, loss_fn, ref_start, args, scheduler, mode='val')
+            # _ = validate_smmile(cur, epoch, model, test_loader, early_stopping, writer, loss_fn, ref_start, args, mode='test')
         elif args.model_type in ['smmile_single']:
             train_loop_smmile_single(epoch, model, train_loader, optimizer, writer, loss_fn, ref_start, args)
-            stop = validate_smmile_single(cur, epoch, model, val_loader, early_stopping, writer, loss_fn, ref_start, args)
+            stop = validate_smmile_single(cur, epoch, model, val_loader, early_stopping, writer, loss_fn, ref_start, args, scheduler, mode='val')
+            # _ = validate_smmile(cur, epoch, model, test_loader, early_stopping, writer, loss_fn, ref_start, args, mode='test')
         else:
             raise NotImplementedError
         
@@ -228,7 +237,9 @@ def train_loop_smmile(epoch, model, loader, optimizer, writer = None, loss_fn = 
     n_classes = args.n_classes
     bi_loss = args.bi_loss
     drop_with_score = args.drop_with_score
+    D = args.D
     superpixel = args.superpixel
+    sp_smooth = args.sp_smooth
     G = args.G
     inst_refinement = args.inst_refinement
     inst_rate = args.inst_rate
@@ -259,12 +270,6 @@ def train_loop_smmile(epoch, model, loader, optimizer, writer = None, loss_fn = 
         wsi_label = torch.zeros(n_classes)
         wsi_label[label.long()] = 1
         wsi_label = wsi_label.to(device)
-
-        # inst_label = inst_label[0]
-        
-        if inst_label!=[] and sum(inst_label)!=0:
-            inst_label = [1 if patch_label>0 else patch_label for patch_label in inst_label] # normal vs cancer, keep -1
-            all_inst_label += inst_label
         
         total_loss = 0
         total_loss_value = 0
@@ -279,54 +284,65 @@ def train_loop_smmile(epoch, model, loader, optimizer, writer = None, loss_fn = 
 
         score, Y_prob, Y_hat, ref_score, results_dict = model(data, mask, sp, adj, label, 
                                                               group_numbers = G, 
-                                                              superpixels=superpixel, 
-                                                              drop_with_score=drop_with_score, 
+                                                              superpixels = superpixel,
+                                                              sp_smooth = sp_smooth,
+                                                              drop_with_score=drop_with_score,
+                                                              drop_times = D,
                                                               instance_eval=inst_refinement, 
                                                               inst_rate=inst_rate,
                                                               mrf=mrf, 
                                                               tau=tau)
-        
+
         # statistics for instance
         if inst_label!=[] and sum(inst_label)!=0:
-            if not inst_refinement:
-                inst_score = score[:,Y_hat].detach().cpu().numpy()[:,0]
-                inst_score = list((inst_score-inst_score.min())/max((inst_score.max()-inst_score.min()),1e-10))
-                inst_pred = [1 if i>0.5 else 0 for i in inst_score]
-                
-                pos_score = score[:,Y_hat].detach().cpu().numpy()[:,0]
-                pos_score = list((pos_score-pos_score.min())/max((pos_score.max()-pos_score.min()),1e-10))
 
-                neg_score = torch.mean(score, dim=-1).detach().cpu().numpy()
-                neg_score = list((neg_score-neg_score.min())/max((neg_score.max()-neg_score.min()),1e-10))
+            inst_label = [1 if patch_label>0 else patch_label for patch_label in inst_label] # normal vs cancer, keep -1
+            all_inst_label += inst_label
+
+            inst_score = score[:,Y_hat].detach().cpu().numpy()[:,0]
+            inst_score = list((inst_score-inst_score.min())/max((inst_score.max()-inst_score.min()),1e-10))
+            inst_pred = [1 if i>0.5 else 0 for i in inst_score]
+            
+            pos_score = score[:,label].detach().cpu().numpy()[:,0]
+            pos_score = list((pos_score-pos_score.min())/max((pos_score.max()-pos_score.min()),1e-10))
+
+            neg_score = torch.mean(score, dim=-1).detach().cpu().numpy()
+            neg_score = list((neg_score-neg_score.min())/max((neg_score.max()-neg_score.min()),1e-10))
                 
-            else:
+            if inst_refinement:
                 inst_score = list(1 - ref_score[:,-1].detach().cpu().numpy())
                 inst_pred = torch.argmax(ref_score, dim=1).detach().cpu().numpy()
                 inst_pred = [0 if i==n_classes else 1 for i in inst_pred] # for one-class cancer
-                
-                pos_score = score[:,Y_hat].detach().cpu().numpy()[:,0]
-                pos_score = list((pos_score-pos_score.min())/max((pos_score.max()-pos_score.min()),1e-10))
-
-                neg_score = torch.mean(score, dim=-1).detach().cpu().numpy()
-                neg_score = list((neg_score-neg_score.min())/max((neg_score.max()-neg_score.min()),1e-10))
 
                 
             all_inst_score += inst_score
             all_inst_pred += inst_pred
+
+            # record pos & neg acc 
+            df_score = pd.DataFrame([inst_label, pos_score, neg_score]).T
+    
+            df_score = df_score.sort_values(by=1)
+            df_score_top = df_score.iloc[-int(df_score.shape[0]*inst_rate):,:]
+            df_score_top = df_score_top[df_score_top[0]!=-1]
             
-            all_inst_score_pos += pos_score
-            all_inst_score_neg += neg_score
+            df_score = df_score.sort_values(by=2)
+            df_score_down = df_score.iloc[:int(df_score.shape[0]*inst_rate),:]
+            df_score_down = df_score_down[df_score_down[0]!=-1]
+            
+            if not df_score_top.empty:
+                all_inst_score_pos += df_score_top[0].tolist()
+            if not df_score_down.empty:
+                all_inst_score_neg += df_score_down[0].tolist()
         
         acc_logger.log(Y_hat, label)
 
-        loss = 0
-        for one_prob in Y_prob:
+        loss = loss_fn(Y_prob[0], wsi_label)/len(Y_prob)
+
+        for one_prob in Y_prob[1:]:
             if bi_loss:
-                loss += loss_fn(one_prob, wsi_label, 0.2, 1., reduction='mean')
+                loss += bi_tempered_binary_logistic_loss(one_prob, wsi_label, 0.2, 1., reduction='mean')/len(Y_prob)
             else:
                 loss += loss_fn(one_prob, wsi_label)/len(Y_prob)
-        
-        loss = loss/len(Y_prob)
         
         loss_value = loss.item()
     
@@ -368,30 +384,30 @@ def train_loop_smmile(epoch, model, loader, optimizer, writer = None, loss_fn = 
     # excluding -1 
     all_inst_label = np.array(all_inst_label)
     all_inst_score = np.array(all_inst_score)
-    all_inst_score_pos = np.array(all_inst_score_pos)
-    all_inst_score_neg = np.array(all_inst_score_pos)
+    # all_inst_score_pos = np.array(all_inst_score_pos)
+    # all_inst_score_neg = np.array(all_inst_score_pos)
     all_inst_pred = np.array(all_inst_pred)
     
     all_inst_score = all_inst_score[all_inst_label!=-1]
-    all_inst_score_pos = all_inst_score_pos[all_inst_label!=-1]
-    all_inst_score_neg = all_inst_score_neg[all_inst_label!=-1]
+    # all_inst_score_pos = all_inst_score_pos[all_inst_label!=-1]
+    # all_inst_score_neg = all_inst_score_neg[all_inst_label!=-1]
     all_inst_pred = all_inst_pred[all_inst_label!=-1]
     
     all_inst_label = all_inst_label[all_inst_label!=-1]
     
     inst_auc = roc_auc_score(all_inst_label, all_inst_score)
-    df_score = pd.DataFrame([all_inst_label, all_inst_score, all_inst_score_pos, all_inst_score_neg]).T
+    # df_score = pd.DataFrame([all_inst_label, all_inst_score, all_inst_score_pos, all_inst_score_neg]).T
     
-    df_score = df_score.sort_values(by=2)
-    df_score[2] = df_score[2].apply(lambda x: 1 if x>0.5 else 0)
-    df_score_top = df_score.iloc[-int(df_score.shape[0]*inst_rate):,:]
+    # df_score = df_score.sort_values(by=2)
+    # df_score[2] = df_score[2].apply(lambda x: 1 if x>0.5 else 0)
+    # df_score_top = df_score.iloc[-int(df_score.shape[0]*inst_rate):,:]
     
-    df_score = df_score.sort_values(by=3)
-    df_score[3] = df_score[3].apply(lambda x: 1 if x>0.5 else 0)
-    df_score_down = df_score.iloc[:int(df_score.shape[0]*inst_rate),:]
+    # df_score = df_score.sort_values(by=3)
+    # df_score[3] = df_score[3].apply(lambda x: 1 if x>0.5 else 0)
+    # df_score_down = df_score.iloc[:int(df_score.shape[0]*inst_rate),:]
     
-    pos_acc = (df_score_top[0].sum()/df_score_top.shape[0])
-    neg_acc = (1-df_score_down[0].sum()/df_score_down.shape[0])
+    pos_acc = (sum(all_inst_score_pos)/len(all_inst_score_pos))
+    neg_acc = (1-sum(all_inst_score_neg)/len(all_inst_score_neg))
     print("seleted pos %f acc: %f" % (inst_rate, pos_acc))
     print("seleted neg %f acc: %f" % (inst_rate, neg_acc))
     
@@ -420,7 +436,9 @@ def train_loop_smmile_single(epoch, model, loader, optimizer, writer = None, los
     bi_loss = args.bi_loss
     consistency = args.consistency
     drop_with_score = args.drop_with_score
+    D = args.D
     superpixel = args.superpixel
+    sp_smooth = args.sp_smooth
     G = args.G
     inst_refinement = args.inst_refinement
     inst_rate = args.inst_rate
@@ -461,8 +479,10 @@ def train_loop_smmile_single(epoch, model, loader, optimizer, writer = None, los
         
         _, Y_prob, Y_hat, ref_score, results_dict = model(data, mask, sp, adj, label=label, 
                                                           group_numbers = G,
-                                                          superpixels=superpixel, 
+                                                          superpixels = superpixel, 
+                                                          sp_smooth = sp_smooth,
                                                           drop_with_score=drop_with_score, 
+                                                          drop_times = D,
                                                           instance_eval=inst_refinement, 
                                                           inst_rate=inst_rate,
                                                           mrf=mrf, 
@@ -471,15 +491,13 @@ def train_loop_smmile_single(epoch, model, loader, optimizer, writer = None, los
         
         acc_logger.log(Y_hat, label)
 
-        loss = 0
+        loss = loss_fn(Y_prob[0], label.float())
         
-        for one_prob in Y_prob:
+        for one_prob in Y_prob[1:]:
             if bi_loss:
-                loss += loss_fn(one_prob, label, 0.2, 1., reduction='mean')
+                loss += bi_tempered_binary_logistic_loss(one_prob, label, 0.2, 1., reduction='mean')/len(Y_prob[1:])
             else:
-                loss += loss_fn(one_prob, label.float())
-                
-        loss = loss/len(Y_prob)
+                loss += loss_fn(one_prob, label.float())/len(Y_prob[1:])
 
         loss_value = loss.item()
     
@@ -586,11 +604,13 @@ def train_loop_smmile_single(epoch, model, loader, optimizer, writer = None, los
         writer.add_scalar('train/error', train_error, epoch)
         writer.add_scalar('train/inst_auc', inst_auc, epoch)
 
-def validate_smmile(cur, epoch, model, loader, early_stopping = None, writer = None, loss_fn = None, ref_start=False, args=None):
+def validate_smmile(cur, epoch, model, loader, early_stopping = None, writer = None, loss_fn = None, ref_start=False, args=None, 
+                    scheduler=None, mode='val'):
     
     n_classes = args.n_classes
     bi_loss = args.bi_loss
     superpixel = args.superpixel
+    sp_smooth = args.sp_smooth
     G = args.G
     inst_refinement = args.inst_refinement
     results_dir = args.results_dir
@@ -630,6 +650,7 @@ def validate_smmile(cur, epoch, model, loader, early_stopping = None, writer = N
 
             score, Y_prob, Y_hat, ref_score, results_dict = model(data, mask, sp, adj, label, 
                                                                   superpixels = superpixel,
+                                                                  sp_smooth = sp_smooth,
                                                                   group_numbers = G,
                                                                   instance_eval=inst_refinement)
             
@@ -647,14 +668,13 @@ def validate_smmile(cur, epoch, model, loader, early_stopping = None, writer = N
             
             acc_logger.log(Y_hat, label)
             
-            loss = 0
-            for one_prob in Y_prob:
+            loss = loss_fn(Y_prob[0], wsi_label)/len(Y_prob)
+
+            for one_prob in Y_prob[1:]:
                 if bi_loss:
-                    loss += loss_fn(one_prob, wsi_label, 0.2, 1., reduction='mean')
+                    loss += bi_tempered_binary_logistic_loss(one_prob, wsi_label, 0.2, 1., reduction='mean')/len(Y_prob)
                 else:
-                    loss += loss_fn(one_prob, wsi_label)
-            
-            loss = loss/len(Y_prob)
+                    loss += loss_fn(one_prob, wsi_label)/len(Y_prob)
 
             Y_prob = Y_prob[0]
             prob[batch_idx] = Y_prob.cpu().numpy()
@@ -719,39 +739,44 @@ def validate_smmile(cur, epoch, model, loader, early_stopping = None, writer = N
         auc = np.nanmean(np.array(aucs))
 
     if writer:
-        writer.add_scalar('val/loss', val_loss, epoch)
-        writer.add_scalar('val/inst_loss', inst_loss, epoch)
-        writer.add_scalar('val/auc', auc, epoch)
-        writer.add_scalar('val/error', val_error, epoch)
-        writer.add_scalar('val/inst_acc', inst_acc, epoch)
-        writer.add_scalar('val/inst_auc', inst_auc, epoch)
-        writer.add_scalar('val/inst_p_macro', inst_p_macro, epoch)
-        writer.add_scalar('val/inst_r_macro', inst_r_macro, epoch)
-        writer.add_scalar('val/inst_f1_macro', inst_f1_macro, epoch)
+        writer.add_scalar('{}/loss'.format(mode), val_loss, epoch)
+        writer.add_scalar('{}/inst_loss'.format(mode), inst_loss, epoch)
+        writer.add_scalar('{}/auc'.format(mode), auc, epoch)
+        writer.add_scalar('{}/error'.format(mode), val_error, epoch)
+        writer.add_scalar('{}/inst_acc'.format(mode), inst_acc, epoch)
+        writer.add_scalar('{}/inst_auc'.format(mode), inst_auc, epoch)
+        writer.add_scalar('{}/inst_p_macro'.format(mode), inst_p_macro, epoch)
+        writer.add_scalar('{}/inst_r_macro'.format(mode), inst_r_macro, epoch)
+        writer.add_scalar('{}/inst_f1_macro'.format(mode), inst_f1_macro, epoch)
 
-    print('\nVal Set, val_loss: {:.4f}, val_error: {:.4f}, auc: {:.4f}, inst_auc: {:.4f}'.format(val_loss, val_error, auc, inst_auc))
+    print('\n {} Set, val_loss: {:.4f}, val_error: {:.4f}, auc: {:.4f}, inst_auc: {:.4f}'.format(mode, val_loss, val_error, auc, inst_auc))
     for i in range(n_classes):
         acc, correct, count = acc_logger.get_summary(i)
         print('class {}: acc {}, correct {}/{}'.format(i, acc, correct, count))     
-
-    torch.save(model.state_dict(), os.path.join(results_dir, "s_{}_checkpoint.pt".format(cur)))
+    
+    if mode == 'val':
+        # LR adjust
+        scheduler.step(val_loss)
         
-    if early_stopping:
-        assert results_dir
-        early_stopping(epoch, val_loss, model, ckpt_name = os.path.join(results_dir, "s_{}_checkpoint_best.pt".format(cur)))
+        torch.save(model.state_dict(), os.path.join(results_dir, "s_{}_checkpoint.pt".format(cur)))
         
-        if early_stopping.early_stop:
-            print("Early stopping")
-            return True
+        if early_stopping:
+            assert results_dir
+            early_stopping(epoch, val_loss, model, ckpt_name = os.path.join(results_dir, "s_{}_checkpoint_best.pt".format(cur)))
+            
+            if early_stopping.early_stop:
+                print("Early stopping")
+                return True
 
     return False
 
 def validate_smmile_single(cur, epoch, model, loader, early_stopping = None, writer = None, loss_fn = None, 
-                          ref_start=False, args=None):
+                          ref_start=False, args=None, scheduler=None, mode='val'):
     
     n_classes = args.n_classes
     bi_loss = args.bi_loss
     superpixel = args.superpixel
+    sp_smooth = args.sp_smooth
     G = args.G
     inst_refinement = args.inst_refinement
     results_dir = args.results_dir
@@ -785,6 +810,7 @@ def validate_smmile_single(cur, epoch, model, loader, early_stopping = None, wri
 
             score, Y_prob, Y_hat, ref_score, results_dict = model(data, mask, sp, adj, label=label, 
                                                                   superpixels = superpixel,
+                                                                  sp_smooth = sp_smooth,
                                                                   group_numbers = G, 
                                                                   instance_eval=inst_refinement)
 
@@ -806,14 +832,13 @@ def validate_smmile_single(cur, epoch, model, loader, early_stopping = None, wri
         
             acc_logger.log(Y_hat, label)
             
-            loss = 0
-            for one_prob in Y_prob:
+            loss = loss_fn(Y_prob[0], label.float())
+            
+            for one_prob in Y_prob[1:]:
                 if bi_loss:
-                    loss += loss_fn(one_prob, label, 0.2, 1., reduction='mean')
+                    loss += bi_tempered_binary_logistic_loss(one_prob, label, 0.2, 1., reduction='mean')/len(Y_prob[1:])
                 else:
-                    loss += loss_fn(one_prob, label)
-                    
-            loss = loss/len(Y_prob)
+                    loss += loss_fn(one_prob, label.float())/len(Y_prob[1:])
 
             Y_prob = Y_prob[0]
             prob[batch_idx] = Y_prob.cpu().numpy()
@@ -855,36 +880,36 @@ def validate_smmile_single(cur, epoch, model, loader, early_stopping = None, wri
     auc = roc_auc_score(labels, prob[:,0])
 
     if writer:
-        writer.add_scalar('val/loss', val_loss, epoch)
-        writer.add_scalar('val/inst_loss', inst_loss, epoch)
-        writer.add_scalar('val/auc', auc, epoch)
-        writer.add_scalar('val/error', val_error, epoch)
-        writer.add_scalar('val/inst_auc', inst_auc, epoch)
-        writer.add_scalar('val/inst_p_macro', inst_p_macro, epoch)
-        writer.add_scalar('val/inst_p_micro', inst_p_micro, epoch)
-        writer.add_scalar('val/inst_p_weighted', inst_p_weighted, epoch)
-        writer.add_scalar('val/inst_r_macro', inst_r_macro, epoch)
-        writer.add_scalar('val/inst_r_micro', inst_r_micro, epoch)
-        writer.add_scalar('val/inst_r_weighted', inst_r_weighted, epoch)
-        writer.add_scalar('val/inst_f1_macro', inst_f1_macro, epoch)
-        writer.add_scalar('val/inst_f1_micro', inst_f1_micro, epoch)
-        writer.add_scalar('val/inst_f1_weighted', inst_f1_weighted, epoch)
+        writer.add_scalar('{}/loss'.format(mode), val_loss, epoch)
+        writer.add_scalar('{}/inst_loss'.format(mode), inst_loss, epoch)
+        writer.add_scalar('{}/auc'.format(mode), auc, epoch)
+        writer.add_scalar('{}/error'.format(mode), val_error, epoch)
+        writer.add_scalar('{}/inst_acc'.format(mode), inst_acc, epoch)
+        writer.add_scalar('{}/inst_auc'.format(mode), inst_auc, epoch)
+        writer.add_scalar('{}/inst_p_macro'.format(mode), inst_p_macro, epoch)
+        writer.add_scalar('{}/inst_r_macro'.format(mode), inst_r_macro, epoch)
+        writer.add_scalar('{}/inst_f1_macro'.format(mode), inst_f1_macro, epoch)
         
 
-    print('\nVal Set, val_loss: {:.4f}, val_error: {:.4f}, auc: {:.4f}, inst_auc: {:.4f}'.format(val_loss, val_error, auc, inst_auc))
+    print('\n {} Set, val_loss: {:.4f}, val_error: {:.4f}, auc: {:.4f}, inst_auc: {:.4f}'.format(mode, val_loss, val_error, auc, inst_auc))
     for i in range(n_classes):
         acc, correct, count = acc_logger.get_summary(i)
         print('class {}: acc {}, correct {}/{}'.format(i, acc, correct, count))     
     
-    torch.save(model.state_dict(), os.path.join(results_dir, "s_{}_checkpoint.pt".format(cur)))
     
-    if early_stopping:
-        assert results_dir
-        early_stopping(epoch, val_loss, model, ckpt_name = os.path.join(results_dir, "s_{}_checkpoint_best.pt".format(cur)))
+    if mode == 'val':
+        # LR adjust
+        scheduler.step(val_loss)
         
-        if early_stopping.early_stop:
-            print("Early stopping")
-            return True
+        torch.save(model.state_dict(), os.path.join(results_dir, "s_{}_checkpoint.pt".format(cur)))
+    
+        if early_stopping:
+            assert results_dir
+            early_stopping(epoch, val_loss, model, ckpt_name = os.path.join(results_dir, "s_{}_checkpoint_best.pt".format(cur)))
+            
+            if early_stopping.early_stop:
+                print("Early stopping")
+                return True
 
     return False
 
@@ -893,6 +918,9 @@ def summary(model, loader, args):
     n_classes = args.n_classes
     model_type = args.model_type
     inst_refinement = args.inst_refinement
+    superpixel = args.superpixel
+    sp_smooth = args.sp_smooth
+    G = args.G
     
     device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
     acc_logger = Accuracy_Logger(n_classes=n_classes)
@@ -921,8 +949,11 @@ def summary(model, loader, args):
             adj = cors[3]
 
             score, Y_prob, Y_hat, ref_score, results_dict = model(data, mask, sp, adj, label, 
+                                                                  superpixels = superpixel,
+                                                                  sp_smooth = sp_smooth,
+                                                                  group_numbers = G,
                                                                   instance_eval=inst_refinement)
-
+            
             Y_prob = Y_prob[0]
 
             if inst_label!=[] and sum(inst_label)!=0:

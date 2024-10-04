@@ -47,7 +47,7 @@ parser.add_argument('--n_refs', type=int, default=3,
                      help='the times of refinement')
 parser.add_argument('--consistency', action='store_true', default=False,
                      help='consistency for the normal class')
-parser.add_argument('--multi_label', action='store_true', default=False,
+parser.add_argument('--multi_label', action='store_true', default=True,
                      help='enable multi_label task')
 parser.add_argument('--drop_with_score', action='store_true', default=False,
                      help='enable weighted drop')
@@ -72,8 +72,8 @@ parser.add_argument('--tau', type=float, default=1,
 args = parser.parse_args()
 
 device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
-args.save_exp_code=args.models_exp_code
-args.save_dir = os.path.join('./eval_results', 'EVAL_' + str(args.save_exp_code))
+# args.save_exp_code=args.models_exp_code
+args.save_dir = os.path.join('./eval_results', 'EVAL_' + str(args.models_exp_code)+str(args.save_exp_code))
 args.models_dir = os.path.join(args.results_dir, str(args.models_exp_code))
 
 conf_file = 'experiment_' + '_'.join(args.models_exp_code.split('_')[:-1])+'.txt'
@@ -90,13 +90,11 @@ assert os.path.isdir(args.models_dir)
 assert os.path.isdir(args.splits_dir)
 
 # update configs
-args.multi_label=conf['multi_label']
 args.task=conf['task']
 args.fea_dim=conf['fea_dim']
 args.model_type=conf['model_type']
 args.model_size=conf['model_size']
 args.drop_out=conf['use_drop_out']
-args.drop_rate=conf['drop_rate']
 args.consistency=conf['consistency']
 args.drop_with_score=conf['drop_with_score']
 args.superpixel=conf['superpixel']
@@ -134,40 +132,52 @@ f.close()
 
 print(settings)
 if args.task == 'gastric_subtype':
-    if args.model_type in ['smmile']:
-        args.n_classes = 3
-        args.patch_size=2048
-        dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/gastric_subtyping_npy.csv',
-                                data_dir = os.path.join(args.data_root_dir),
-                                data_mag = '1_512',
-                                sp_dir = os.path.join(args.data_sp_dir),
-                                size = 2048,
-                                task = args.task,
-                                shuffle = False, 
-                                seed = 10, 
-                                print_info = True,
-                                label_dict = {'0,0,1':0, '0,1,0':1, '1,0,0':2,'0,1,1':3, '1,1,0':4, '1,0,1':5, '1,1,1':6},
-                                patient_strat= False,
-                                ignore=[])
-        
-elif args.task == 'gleason_subtype':
+    args.patch_size = 2048
     args.n_classes = 3
-    args.patch_size=1024
-    if args.model_type in ['smmile']:
-        dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/gleason_subtyping_npy.csv',
-                                data_dir = os.path.join(args.data_root_dir),
-                                data_mag = '0_1024',
-                                sp_dir = os.path.join(args.data_sp_dir),
-                                size = 1024,
-                                task = args.task,
-                                shuffle = False, 
-                                seed = 10, 
-                                print_info = True,
-                                label_dict = {'0,0,0':0, '0,0,1':1, '0,1,0':2, '0,1,1':3, '1,0,0':4, '1,0,1':5, 
-                                              '1,1,0':6,'1,1,1':7}, # 36, 4, 22, 19, 33, 0, 32, 7
-                                patient_strat= False,
-                                ignore=[])
+    dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/gastric_subtyping_npy.csv',
+                            data_dir = os.path.join(args.data_root_dir),
+                            data_mag = '1_512',
+                            sp_dir = os.path.join(args.data_sp_dir),
+                            size = 2048,
+                            task = args.task,
+                            shuffle = False, 
+                            seed = 10, 
+                            print_info = True,
+                            label_dict = {'0,0,1':0, '0,1,0':1, '1,0,0':2,'0,1,1':3, '1,1,0':4, '1,0,1':5, '1,1,1':6},
+                            patient_strat= False,
+                            ignore=[])
         
+elif args.task == 'gleason_grading':
+    args.patch_size = 1024
+    args.n_classes = 3
+    dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/gleason_grading_npy.csv',
+                            data_dir = os.path.join(args.data_root_dir),
+                            data_mag = '0_1024',
+                            sp_dir = os.path.join(args.data_sp_dir),
+                            size = 1024,
+                            task = args.task,
+                            shuffle = False, 
+                            seed = 10, 
+                            print_info = True,
+                            label_dict = {'0,0,0':0, '0,0,1':1, '0,1,0':2, '0,1,1':3, '1,0,0':4, '1,0,1':5, 
+                                            '1,1,0':6,'1,1,1':7}, # 36, 4, 22, 19, 33, 0, 32, 7
+                            patient_strat= False,
+                            ignore=[])
+elif args.task == 'gastric_esd_subtype':
+    args.patch_size = 512
+    args.n_classes = 2
+    dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/gastric_esd_subtyping_npy.csv',
+                            data_dir = os.path.join(args.data_root_dir),
+                            data_mag = '0_512',
+                            sp_dir = os.path.join(args.data_sp_dir),
+                            size = 512,
+                            task = args.task,
+                            shuffle = False, 
+                            seed = 10, 
+                            print_info = True,
+                            label_dict =  {'0,0':0, '0,1':1, '1,1':2}, # {'0,0':0, '0,1':1, '1,0':2, '1,1':3},
+                            patient_strat= False,
+                            ignore=[])
 else:
     raise NotImplementedError
 
@@ -184,7 +194,8 @@ if args.fold == -1:
     folds = range(start, end)
 else:
     folds = range(args.fold, args.fold+1)
-ckpt_paths = [os.path.join(args.models_dir, 's_{}_checkpoint.pt'.format(fold)) for fold in folds]
+ckpt_paths = [os.path.join(args.models_dir, 's_{}_checkpoint_best.pt'.format(fold)) for fold in folds]
+# ckpt_paths = [os.path.join(args.models_dir, 's_{}_checkpoint.pt'.format(fold)) for fold in folds]
 datasets_id = {'train': 0, 'val': 1, 'test': 2, 'all': -1}
 
 if __name__ == "__main__":

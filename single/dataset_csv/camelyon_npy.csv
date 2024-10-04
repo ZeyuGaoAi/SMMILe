@@ -9,7 +9,6 @@ a0bf83ce-2684-42e6-902f-88b5d407fe95,test_007,normal
 98c75905-54f4-44e6-b0e0-648bccaff335,test_008,tumor
 f63d4761-a3dc-4d02-99fc-1c83585b52b4,test_009,normal
 e1936080-9d6b-42d2-a893-4b24c63a720e,test_010,tumor
-2b2171f8-26dc-483a-9570-d6a42e893516,test_011,tumor
 876d670b-8164-4ea8-9c9e-d3c26bff8c36,test_012,normal
 7a5de635-75bc-4dd3-9bd8-92eb67b3a7a1,test_013,tumor
 bf118d4a-60fe-4c06-83be-19f430e40ee9,test_014,normal
@@ -213,7 +212,6 @@ b9a7a605-914a-4521-9e50-32045816ae6d,normal_075,normal
 07f70def-f035-4394-acb6-6e75a6b3991a,normal_083,normal
 e20d1d16-c1cd-46e2-9839-635be418d620,normal_084,normal
 8b73c5eb-2e32-412f-aa6f-a60ad7c9c9ca,normal_085,normal
-ae20954a-d461-4901-afe6-e726090cb84d,normal_086,normal
 c866c6f1-5b51-4c2b-9d45-8a16317b29dc,normal_087,normal
 6136e059-9d79-45b3-868f-4c506de2c348,normal_088,normal
 68cc8b0c-77f7-44f6-9007-5b104b3bf939,normal_089,normal
@@ -297,7 +295,6 @@ a6d9fa92-a762-42b4-b5b9-354e512ead9c,tumor_007,tumor
 dfead847-cda1-4f4d-8431-98b72e431d0b,tumor_008,tumor
 d733e47e-9bab-4fda-8fa7-949b43a97fbe,tumor_009,tumor
 75ce7a07-2074-4310-a3f6-2fde1f2a5d93,tumor_010,tumor
-870e5df1-6c85-41f4-975b-46da855340d3,tumor_011,tumor
 f2773f0f-66a1-40fc-a331-ee4285fdf5a0,tumor_012,tumor
 52708f7e-ea0a-47b5-86ff-ae7752130a25,tumor_013,tumor
 7113fda9-e59a-4dff-9c1c-6f89bcfc3594,tumor_014,tumor

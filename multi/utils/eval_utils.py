@@ -161,6 +161,7 @@ def summary(model, loader, args):
                 for class_idx in range(n_classes):
 #                     if class_idx not in Y_hat:
                     if class_idx not in index_label:
+                        inst_score[:, class_idx] = -1
                         continue
                     inst_score_one_class = pos_score[:,class_idx]
 #                     if len(set(inst_score_one_class))>1:

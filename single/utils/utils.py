@@ -148,7 +148,7 @@ def calculate_error(Y_hat, Y):
     return error
 
 def make_weights_for_balanced_classes_split(dataset):
-    N = float(len(dataset))                                           
+    N = float(len(dataset)) 
     weight_per_class = [N/len(dataset.slide_cls_ids[c]) for c in range(len(dataset.slide_cls_ids))]                                                                                                     
     weight = [0] * int(N)                                           
     for idx in range(len(dataset)):   

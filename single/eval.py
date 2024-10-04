@@ -42,16 +42,19 @@ parser.add_argument('--fea_dim', type=int, default=1024,
                      help='the original dimensions of patch embedding')
 parser.add_argument('--n_classes', type=int, default=3,
                      help='the number of types')
-parser.add_argument('--n_refs', type=int, default=3,
-                     help='the times of refinement')
 
 ### smmile specific options
+
 parser.add_argument('--drop_with_score', action='store_true', default=False,
                      help='enable weighted drop')
+parser.add_argument('--D', type=int, default=4,
+                     help='drop out times D')
 parser.add_argument('--data_sp_dir', type=str, default=None, 
                     help='data directory of sp')
 parser.add_argument('--superpixel', action='store_true', default=False,
                      help='enable superpixel sampling')
+parser.add_argument('--sp_smooth', action='store_true', default=False,
+                     help='enable superpixel average smooth')
 parser.add_argument('--G', type=int, default=4,
                      help='one sample split to G')
 parser.add_argument('--ref_start_epoch', type=int, default=75,
@@ -60,6 +63,8 @@ parser.add_argument('--inst_refinement', action='store_true', default=False,
                      help='enable instance-level refinement')
 parser.add_argument('--inst_rate', type=float, default=0.01,
                     help='sample rate for inst_refinement')
+parser.add_argument('--n_refs', type=int, default=3,
+                     help='the number of refinement layers')
 parser.add_argument('--mrf', action='store_true', default=False,
                      help='enable MRF constraint for refinement')
 parser.add_argument('--tau', type=float, default=1,
@@ -69,8 +74,8 @@ parser.add_argument('--tau', type=float, default=1,
 args = parser.parse_args()
 
 device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
-args.save_exp_code=args.models_exp_code
-args.save_dir = os.path.join('./eval_results', 'EVAL_' + str(args.save_exp_code))
+# args.save_exp_code=args.models_exp_code
+args.save_dir = os.path.join('./eval_results', 'EVAL_' + str(args.models_exp_code)+str(args.save_exp_code))
 args.models_dir = os.path.join(args.results_dir, str(args.models_exp_code))
 
 conf_file = 'experiment_' + '_'.join(args.models_exp_code.split('_')[:-1])+'.txt'
@@ -93,8 +98,11 @@ args.model_type=conf['model_type']
 args.model_size=conf['model_size']
 args.drop_out=conf['use_drop_out']
 args.drop_with_score=conf['drop_with_score']
+args.D=conf['D']
 args.superpixel=conf['superpixel']
 args.G=conf['G']
+if 'sp_smooth' in conf:
+    args.sp_smooth=conf['sp_smooth']
 args.inst_refinement=conf['inst_refinement']
 args.n_refs=conf['n_refs']
 args.inst_rate=conf['inst_rate']
@@ -113,6 +121,7 @@ settings = {'task': args.task,
         'drop_rate': args.drop_rate,
         'drop_with_score':args.drop_with_score,
         'superpixel':args.superpixel,
+        'sp_smooth': args.sp_smooth,
         'inst_refinement':args.inst_refinement
         }
 
@@ -151,16 +160,30 @@ elif args.task == 'renal_subtype':
                                 label_dict = {'ccrcc':0, 'prcc':1, 'chrcc':2},
                                 patient_strat= False,
                                 ignore=[])
-            
+elif args.task == 'renal_subtype_yfy':
+    args.n_classes=4
+    args.patch_size=1024
+    if args.model_type in ['smmile']:
+            dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/renal_subtyping_yfy_npy.csv',
+                                data_dir = os.path.join(args.data_root_dir),
+                                data_mag = '0_1024',
+                                sp_dir = os.path.join(args.data_sp_dir),
+                                size = 1024,
+                                shuffle = False, 
+                                seed = 10, 
+                                print_info = True,
+                                label_dict = {'ccrcc':0, 'prcc':1, 'chrcc':2, 'rocy':3},
+                                patient_strat= False,
+                                ignore=[])
 elif args.task == 'lung_subtype':
     args.n_classes=2
-    args.patch_size=2048
+    args.patch_size=2048 #2048
     if args.model_type in ['smmile']:
             dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/lung_subtyping_npy.csv',
                                 data_dir = os.path.join(args.data_root_dir),
-                                data_mag = '1_512',
+                                data_mag = '1_512', #1_512
                                 sp_dir = os.path.join(args.data_sp_dir),
-                                size = 2048,
+                                size = 2048, #2048
                                 shuffle = False, 
                                 seed = 10, 
                                 print_info = True,
@@ -204,8 +227,8 @@ if args.fold == -1:
 else:
     folds = range(args.fold, args.fold+1)
 
-# ckpt_paths = [os.path.join(args.models_dir, 's_{}_checkpoint_best.pt'.format(fold)) for fold in folds]
-ckpt_paths = [os.path.join(args.models_dir, 's_{}_checkpoint.pt'.format(fold)) for fold in folds]
+ckpt_paths = [os.path.join(args.models_dir, 's_{}_checkpoint_best.pt'.format(fold)) for fold in folds]
+# ckpt_paths = [os.path.join(args.models_dir, 's_{}_checkpoint.pt'.format(fold)) for fold in folds]
 datasets_id = {'train': 0, 'val': 1, 'test': 2, 'all': -1}
 
 if __name__ == "__main__":
@@ -221,7 +244,7 @@ if __name__ == "__main__":
             csv_path = '{}/splits_{}.csv'.format(args.splits_dir, folds[ckpt_idx])
             datasets = dataset.return_splits(from_id=False, csv_path=csv_path)
             split_dataset = datasets[datasets_id[args.split]]
-        patient_results, test_error, auc, inst_auc,inst_acc, df, df_inst  = eval_(split_dataset, args, ckpt_paths[ckpt_idx])
+        patient_results, test_error, auc, inst_auc, inst_acc, df, df_inst  = eval_(split_dataset, args, ckpt_paths[ckpt_idx])
         
         all_results.append(patient_results)
         all_auc.append(auc)

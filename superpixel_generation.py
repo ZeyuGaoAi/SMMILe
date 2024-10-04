@@ -4,6 +4,9 @@ import glob
 import numpy as np
 from skimage import segmentation
 from tqdm import tqdm
+from PIL import Image
+
+from concurrent.futures import ThreadPoolExecutor
 
 def get_nic_with_coord(features, coords, size, inst_label):
         w = coords[:,0]
@@ -87,62 +90,133 @@ def generate_adjacency_matrix(superpixel_matrix):
 
     return adjacency_matrix
 
+def process_file(fea_path, args):
+    base_name = os.path.basename(fea_path)
+    record = np.load(fea_path, allow_pickle=True)
+    features = record[()][args.keyword_feature] #.cpu()
+    
+    coords = record[()]['index']
+    if isinstance(coords[0], np.ndarray):
+        coords_nd = np.array(coords)
+    else:
+        coords_nd = np.array([[int(i.split('_')[0]),int(i.split('_')[1])] for i in coords])
 
-if __name__ == "__main__":
+    if 'inst_label' in record[()].keys():
+        inst_label = record[()]['inst_label']
+    else:
+        inst_label = [0 for _ in range(coords_nd.shape[0])]
 
+    features = (features - features.min()) / (features.max() - features.min()) * 255
+    features_nic, mask, _ = get_nic_with_coord(features, coords_nd, args.size, inst_label)
+
+    data = np.transpose(features_nic, (1, 2, 0))
+    n_segments = max(10, int(features.shape[0] / args.n_segments_persp))
+    m_slic = segmentation.slic(data, n_segments=n_segments, mask=mask, compactness=args.compactness, start_label=1).T
+    m_adj = generate_adjacency_matrix(m_slic)
+
+    sp_path = os.path.join(args.sp_dir, base_name)
+    sp_contents = {'m_slic': m_slic, 'm_adj': m_adj}
+    
+    if np.max(m_slic) != (m_adj.shape[0] - 1):
+        print(fea_path)
+        print(np.max(m_slic))
+        print(m_adj.shape)
+
+    np.save(sp_path, sp_contents)
+
+def main():
     parser = argparse.ArgumentParser(description="Process WSIs for Superpixel Segmentation")
     parser.add_argument('--size', type=int, default=2048, help='Patch size of each individual feature')
-    parser.add_argument('--file_suffix', type=str, default='*.npy', help='Suffix for numpy files')
+    parser.add_argument('--file_suffix', type=str, default='*1_256.npy', help='Suffix for numpy files')
     parser.add_argument('--n_segments_persp', type=int, default=16, help='Number of patches per super-patch')
     parser.add_argument('--keyword_feature', type=str, default='feature2', help='feature keyword in npy file, feature2 is the 1024 dim of resnet')
-    parser.add_argument('--compactness', type=int, default=50, help='Compactness for SLIC')
+    parser.add_argument('--compactness', type=int, default=1, help='Compactness for SLIC')
     parser.add_argument('--fea_dir', type=str, default='/home/z/zeyugao/dataset/WSIData/TCGARenal/res50/', help='Directory for feature embeddings of WSIs')
     parser.add_argument('--sp_dir', type=str, default='/home/z/zeyugao/dataset/WSIData/TCGARenal/sp_n%d_c%d_%d/', help='Directory for saving superpixel segmentation results')
-    
-    args = parser.parse_args()
+    parser.add_argument('--num_workers', type=int, default=4, help='Number of worker threads')
 
-    args.sp_dir = args.sp_dir % (args.n_segments_persp, args.compactness, args.size) # superpixel result saving dictionary of WSIs
+    args = parser.parse_args()
+    args.sp_dir = args.sp_dir % (args.n_segments_persp, args.compactness, args.size) # superpixel result saving directory
+
     print("Superpixel Segmentation Results will be saved to: %s" % args.sp_dir)
 
     file_list = glob.glob(os.path.join(args.fea_dir, args.file_suffix))
 
     if not os.path.exists(args.sp_dir):
-        os.mkdir(args.sp_dir)
+        os.makedirs(args.sp_dir)
 
-    for fea_path in tqdm(file_list):
-        
-        base_name = os.path.basename(fea_path)
-        record = np.load(fea_path, allow_pickle=True)
-        features = record[()][args.keyword_feature]
-        
-        coords = record[()]['index']
-        if type(coords[0]) is np.ndarray:
-            coords_nd = np.array(coords)
-        else:
-            coords_nd = np.array([[int(i.split('_')[0]),int(i.split('_')[1])] for i in coords])
-        
-        if type(coords[0]) is np.ndarray:
-                coords_nd = np.array(coords)
-        
-        inst_label = record[()]['inst_label']
-        features = (features-features.min())/(features.max()-features.min())*255
-        features_nic, mask, inst_label_nic = get_nic_with_coord(features, coords_nd, args.size, inst_label)
+    # Use ThreadPoolExecutor for multi-threading
+    with ThreadPoolExecutor(max_workers=args.num_workers) as executor:
+        list(tqdm(executor.map(lambda fea_path: process_file(fea_path, args), file_list), total=len(file_list)))
 
-        data = np.transpose(features_nic, (1,2,0))
+if __name__ == "__main__":
+    main()
 
-        n_segments = max(10, int(features.shape[0] / args.n_segments_persp))
-        m_slic = segmentation.slic(data, n_segments=n_segments, mask=mask, compactness=args.compactness, start_label=1).T
-        m_adj = generate_adjacency_matrix(m_slic)
-        
-        sp_path = os.path.join(args.sp_dir, base_name)
-        
-        sp_cotents = {}
-        sp_cotents['m_slic'] = m_slic
-        sp_cotents['m_adj'] = m_adj
-        
-        if np.max(m_slic) != (m_adj.shape[0]-1):
-            print(fea_path)
-            print(np.max(m_slic))
-            print(m_adj.shape)
 
-        np.save(sp_path, sp_cotents)
+# if __name__ == "__main__":
+
+#     parser = argparse.ArgumentParser(description="Process WSIs for Superpixel Segmentation")
+#     parser.add_argument('--size', type=int, default=2048, help='Patch size of each individual feature')
+#     parser.add_argument('--file_suffix', type=str, default='*1_256.npy', help='Suffix for numpy files')
+#     parser.add_argument('--n_segments_persp', type=int, default=16, help='Number of patches per super-patch')
+#     parser.add_argument('--keyword_feature', type=str, default='feature2', help='feature keyword in npy file, feature2 is the 1024 dim of resnet')
+#     parser.add_argument('--compactness', type=int, default=1, help='Compactness for SLIC')
+#     parser.add_argument('--fea_dir', type=str, default='/home/z/zeyugao/dataset/WSIData/TCGARenal/res50/', help='Directory for feature embeddings of WSIs')
+#     parser.add_argument('--sp_dir', type=str, default='/home/z/zeyugao/dataset/WSIData/TCGARenal/sp_n%d_c%d_%d/', help='Directory for saving superpixel segmentation results')
+    
+#     args = parser.parse_args()
+
+#     args.sp_dir = args.sp_dir % (args.n_segments_persp, args.compactness, args.size) # superpixel result saving dictionary of WSIs
+#     print("Superpixel Segmentation Results will be saved to: %s" % args.sp_dir)
+
+#     file_list = glob.glob(os.path.join(args.fea_dir, args.file_suffix))
+
+#     if not os.path.exists(args.sp_dir):
+#         os.mkdir(args.sp_dir)
+
+#     for fea_path in tqdm(file_list):
+        
+#         base_name = os.path.basename(fea_path)
+#         record = np.load(fea_path, allow_pickle=True)
+#         features = record[()][args.keyword_feature].cpu()
+        
+#         coords = record[()]['index']
+#         if type(coords[0]) is np.ndarray:
+#             coords_nd = np.array(coords)
+#         else:
+#             coords_nd = np.array([[int(i.split('_')[0]),int(i.split('_')[1])] for i in coords])
+        
+#         if type(coords[0]) is np.ndarray:
+#                 coords_nd = np.array(coords)
+        
+#         if 'inst_label' in record[()].keys():
+#             inst_label = record[()]['inst_label']
+#         else:
+#             inst_label = [0 for i in range(coords_nd.shape[0])]
+
+#         features = (features-features.min())/(features.max()-features.min())*255
+#         features_nic, mask, inst_label_nic = get_nic_with_coord(features, coords_nd, args.size, inst_label)
+
+#         data = np.transpose(features_nic, (1,2,0))
+
+#         n_segments = max(10, int(features.shape[0] / args.n_segments_persp))
+#         m_slic = segmentation.slic(data, n_segments=n_segments, mask=mask, compactness=args.compactness, start_label=1).T
+#         m_adj = generate_adjacency_matrix(m_slic)
+        
+#         sp_path = os.path.join(args.sp_dir, base_name)
+        
+#         sp_cotents = {}
+#         sp_cotents['m_slic'] = m_slic
+#         sp_cotents['m_adj'] = m_adj
+        
+#         if np.max(m_slic) != (m_adj.shape[0]-1):
+#             print(fea_path)
+#             print(np.max(m_slic))
+#             print(m_adj.shape)
+
+#         np.save(sp_path, sp_cotents)
+
+        # mask = (mask * 255).astype(np.uint8)
+        # mask = Image.fromarray(mask)
+        # mask_path = '/home/z/zeyugao/dataset/WSIData/TCGA-OV-HRD/Masks/%s.png' % base_name.split('.npy')[0]
+        # mask.save(mask_path)

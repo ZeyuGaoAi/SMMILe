@@ -1,0 +1,49 @@
+# configs of task
+n_classes: 2
+task: 'gastric_esd_subtype'
+multi_label: True
+
+# configs of path
+data_root_dir: '/home/z/zeyugao/dataset/WSIData/IH-ESD/clam_gen/resnet50' # patch embedding path
+data_sp_dir: '/home/z/zeyugao/dataset/WSIData/IH-ESD/clam_gen/sp_n16_c50_512/' # superpixel segmentation map path
+label_frac: 0.8
+models_dir: None
+data_mag: '0_512'
+patch_size: 512
+fea_dim: 1024
+
+results_dir: './results_clres_esd/'
+exp_code: 'gastric_subtyping_smmile_noinr_res50_1512_5fold'
+
+# configs of training
+reverse_train_val: False # 20 train 80 val
+seed: 1
+k: 5
+k_start: 0
+k_end: 5
+max_epochs: 100
+lr: 0.00002
+reg: 0.00001
+early_stopping: True
+drop_out: True
+drop_rate: 0.25
+opt: 'adam'
+bag_loss: 'bibce' # bibce
+weighted_sample: True
+log_data: True
+testing: False
+
+# configs of model
+model_type: 'smmile'
+model_size: 'small'
+consistency: False # attention consistency for negative bags
+drop_with_score: False # instance drop out
+D: 10
+superpixel: False # instance sampling
+G: 10 # number of instance sampling times
+inst_refinement: False # instance refinement
+inst_rate: 0.1 # instance rate for pseudo label generation
+n_refs: 3 # number of layers for the refinement network
+ref_start_epoch: 0 # 0 for instance refinement
+mrf: False # MRF constraint for instance refinement
+tau: 0.1 # weight control for MRF constraint

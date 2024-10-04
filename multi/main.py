@@ -96,43 +96,53 @@ parser.add_argument('--model_type', type=str, choices=['smmile'], default='smmil
 parser.add_argument('--exp_code', type=str, help='experiment code for saving results')
 parser.add_argument('--weighted_sample', action='store_true', default=False, help='enable weighted sampling')
 parser.add_argument('--model_size', type=str, choices=['small', 'big'], default='small', help='size of model, does not affect mil')
-parser.add_argument('--task', type=str, choices=['gastric_subtype','gleason_grading'])
+parser.add_argument('--task', type=str, choices=['gastric_subtype','gleason_grading','gastric_esd_subtype'])
 parser.add_argument('--fea_dim', type=int, default=1024,
                      help='the original dimensions of patch embedding')
 parser.add_argument('--models_dir', type=str, default=None,
                      help='the path to ckpt')
 parser.add_argument('--n_classes', type=int, default=3,
                      help='the number of types')
-parser.add_argument('--n_refs', type=int, default=3,
-                     help='the times of refinement')
 parser.add_argument('--drop_rate', type=float, default=0.25,
                     help='drop_rate for official dropout')
+parser.add_argument('--reverse_train_val', action='store_true', default=False, help='reverse train and val set')
 
-### SMMILe specific options
+### smmile specific options
 parser.add_argument('--consistency', action='store_true', default=False,
-                     help='consistency for the normal class')
-parser.add_argument('--multi_label', action='store_true', default=False,
-                     help='enable multi_label task')
+                     help='enable consistency for normal cases')
 parser.add_argument('--drop_with_score', action='store_true', default=False,
                      help='enable weighted drop')
+parser.add_argument('--D', type=int, default=4,
+                     help='drop out times D')
 parser.add_argument('--data_sp_dir', type=str, default=None, 
                     help='data directory of sp')
 parser.add_argument('--superpixel', action='store_true', default=False,
                      help='enable superpixel sampling')
+parser.add_argument('--sp_smooth', action='store_true', default=False,
+                     help='enable superpixel average smooth')
 parser.add_argument('--G', type=int, default=4,
-                     help='superpixel sampling times(groups)')
-parser.add_argument('--ref_start_epoch', type=int, default=50,
+                     help='one sample split to G')
+parser.add_argument('--ref_start_epoch', type=int, default=75,
                      help='the inst loss back-propagation is start on this epoch')
 parser.add_argument('--inst_refinement', action='store_true', default=False,
                      help='enable instance-level refinement')
 parser.add_argument('--inst_rate', type=float, default=0.01,
                     help='sample rate for inst_refinement')
+parser.add_argument('--n_refs', type=int, default=3,
+                     help='the number of refinement layers')
 parser.add_argument('--mrf', action='store_true', default=False,
                      help='enable MRF constraint for refinement')
 parser.add_argument('--tau', type=float, default=1,
                      help='controling smoothness of mrf')
 
+initial_args, _ = parser.parse_known_args()
+with open(initial_args.config) as fp:
+    cfg = yaml.load(fp, Loader=yaml.CLoader)
+
+parser.set_defaults(**cfg)
+
 args = parser.parse_args()
+
 device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def seed_torch(seed=7):
@@ -147,58 +157,13 @@ def seed_torch(seed=7):
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
 
-    
-# read config
-with open(args.config) as fp:
-    cfg = yaml.load(fp, Loader=yaml.CLoader)
-args.seed=cfg['seed']
-args.log_data = cfg['log_data']
-args.testing = cfg['testing']
-args.reg= cfg['reg']
-args.n_classes=cfg['n_classes']
-args.early_stopping=cfg['early_stopping']
-args.k = cfg['k']
-args.k_start = cfg['k_start']
-args.k_end = cfg['k_end']
-args.task = cfg['task']
-args.data_root_dir=cfg['data_root_dir']
-args.max_epochs = cfg['max_epochs']
-args.results_dir = cfg['results_dir']
-args.lr = cfg['lr']
-args.exp_code = cfg['exp_code']
-args.label_frac = cfg['label_frac']
-args.bag_loss = cfg['bag_loss']
-args.model_type = cfg['model_type']
-args.model_size = cfg['model_size']
-args.drop_out = cfg['drop_out']
-args.drop_rate = cfg['drop_rate']
-args.weighted_sample = cfg['weighted_sample']
-args.fea_dim = cfg['fea_dim']
-args.opt = cfg['opt']
-args.models_dir = cfg['models_dir']
-### SMMILe specific options
-args.multi_label = cfg['multi_label']
-args.consistency = cfg['consistency']
-args.drop_with_score = cfg['drop_with_score']
-args.superpixel = cfg['superpixel']
-args.data_sp_dir = cfg['data_sp_dir']
-args.G = cfg['G']
-args.inst_refinement = cfg['inst_refinement']
-args.inst_rate = cfg['inst_rate']
-args.n_refs = cfg['n_refs']
-args.ref_start_epoch = cfg['ref_start_epoch']
-args.mrf = cfg['mrf']
-args.tau = cfg['tau']
-####
 
 seed_torch(args.seed)
 
-settings = {'n_classes':args.n_classes,
-            'num_splits': args.k, 
+settings = {'num_splits': args.k, 
             'k_start': args.k_start,
             'k_end': args.k_end,
             'task': args.task,
-            'data_root_dir': args.data_root_dir,
             'max_epochs': args.max_epochs, 
             'results_dir': args.results_dir, 
             'lr': args.lr,
@@ -210,16 +175,16 @@ settings = {'n_classes':args.n_classes,
             'model_type': args.model_type,
             'model_size': args.model_size,
             "use_drop_out": args.drop_out,
-            "drop_rate": args.drop_rate,
             'weighted_sample': args.weighted_sample,
             'fea_dim': args.fea_dim,
             'opt': args.opt,
             'models_dir': args.models_dir}
 
-settings.update({'multi_label': args.multi_label})
 settings.update({'consistency': args.consistency})
 settings.update({'drop_with_score': args.drop_with_score})
+settings.update({'D': args.D})
 settings.update({'superpixel': args.superpixel})
+settings.update({'sp_smooth': args.sp_smooth})
 settings.update({'data_sp_dir': args.data_sp_dir})
 settings.update({'G': args.G})
 settings.update({'inst_refinement': args.inst_refinement})
@@ -234,12 +199,11 @@ print('\nLoad Dataset')
         
 if args.task == 'gastric_subtype':
     if args.model_type in ['smmile']:
-        args.n_classes = 3
         dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/gastric_subtyping_npy.csv',
                                 data_dir = os.path.join(args.data_root_dir),
-                                data_mag = '1_512',
+                                data_mag = args.data_mag,
                                 sp_dir = os.path.join(args.data_sp_dir),
-                                size = 2048,
+                                size = args.patch_size,
                                 task = args.task,
                                 shuffle = False, 
                                 seed = 10, 
@@ -249,13 +213,12 @@ if args.task == 'gastric_subtype':
                                 ignore=[])
         
 elif args.task == 'gleason_grading':
-    args.n_classes = 3
     if args.model_type in ['smmile']:
-        dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/gleason_subtyping_npy.csv',
+        dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/gleason_grading_npy.csv',
                                 data_dir = os.path.join(args.data_root_dir),
-                                data_mag = '0_1024',
+                                data_mag = args.data_mag,
                                 sp_dir = os.path.join(args.data_sp_dir),
-                                size = 1024,
+                                size = args.patch_size,
                                 task = args.task,
                                 shuffle = False, 
                                 seed = 10, 
@@ -264,7 +227,20 @@ elif args.task == 'gleason_grading':
                                               '1,1,0':6,'1,1,1':7}, # 36, 4, 22, 19, 33, 0, 32, 7
                                 patient_strat= False,
                                 ignore=[])
-        
+elif args.task == 'gastric_esd_subtype':
+    if args.model_type in ['smmile']:
+        dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/gastric_esd_subtyping_npy.csv',
+                                data_dir = os.path.join(args.data_root_dir),
+                                data_mag = args.data_mag,
+                                sp_dir = os.path.join(args.data_sp_dir),
+                                size = args.patch_size,
+                                task = args.task,
+                                shuffle = False, 
+                                seed = 10, 
+                                print_info = True,
+                                label_dict =  {'0,0':0, '0,1':1, '1,1':2}, # {'0,0':0, '0,1':1, '1,0':2, '1,1':3},
+                                patient_strat= False,
+                                ignore=[])
 else:
     raise NotImplementedError
 

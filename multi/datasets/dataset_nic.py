@@ -379,21 +379,20 @@ class Generic_MIL_SP_Dataset(Generic_WSI_Classification_Dataset):
 
     def translabel(self, label, task):
         if task == 'gastric_esd_subtype':
-            label_dict = [[0,0],[0,1],[1,0],[1,1]] # gastric_esd tumor inflammation 
+            label_dict = [[0,0],[0,1],[1,1]] # gastric_esd tumor inflammation 
         elif task == 'gastric_subtype':
             label_dict = [[0,0,1],[0,1,0],[1,0,0],[0,1,1],[1,1,0],[1,0,1],[1,1,1]] # gastric low high muc
-        elif task == 'gleason_subtype':
+        elif task == 'gleason_grading':
             label_dict = [[0,0,0], [0,0,1], [0,1,0], [0,1,1], [1,0,0], [1,0,1], [1,1,0], [1,1,1]] # gleason
-            
+        else:
+            label_dict = []
         return label_dict[label]
     
     def __getitem__(self, idx):
         slide_id = self.slide_data['slide_id'][idx]
         label = self.slide_data['label'][idx]
-        if self.task not in ['renal_subtype']:
-            label = self.translabel(label, self.task)
-            
-        
+
+        label = self.translabel(label, self.task)
             
         data_dir = self.data_dir
 
@@ -430,10 +429,29 @@ class Generic_MIL_SP_Dataset(Generic_WSI_Classification_Dataset):
         
         inst_label = record[()]['inst_label']
         inst_label = np.array(inst_label)
+
+        # res50 need transform
+        # if self.task=='gastric_subtype' and not all(x == -1 for x in inst_label):
+        #     inst_label[inst_label==0]=-1
+        #     inst_label[inst_label==1]=0
+        #     inst_label[inst_label==2]=1
+        #     inst_label[inst_label==3]=2
+        #     inst_label[inst_label==4]=2
+        #     inst_label[inst_label==-1]=3
+        
+        # res50 conch all need transform
         if self.task=='gastric_esd_subtype':
             inst_label[inst_label==1]=3 # normal gland (1) -> back ground (3)
             inst_label[inst_label==2]=1 # Inflammation (2) -> Inflammation (1)
             inst_label[inst_label==3]=2 # back ground (3) -> back ground (2)
+
+        # res50 need transform
+        # if self.task=='gleason_grading':
+        #     inst_label[inst_label==0]=-1
+        #     inst_label[inst_label==3]=0
+        #     inst_label[inst_label==4]=1
+        #     inst_label[inst_label==5]=2
+        #     inst_label[inst_label==-1]=3
 
         inst_label = list(inst_label)
         

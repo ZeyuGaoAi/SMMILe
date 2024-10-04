@@ -55,6 +55,9 @@ def summary(model, loader, args):
     n_classes = args.n_classes
     model_type = args.model_type
     inst_refinement = args.inst_refinement
+    superpixel = args.superpixel
+    sp_smooth = args.sp_smooth
+    G = args.G
     
     device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
     acc_logger = Accuracy_Logger(n_classes=n_classes)
@@ -85,6 +88,9 @@ def summary(model, loader, args):
             adj = cors[3]
 
             score, Y_prob, Y_hat, ref_score, results_dict = model(data, mask, sp, adj, label, 
+                                                                  superpixels = superpixel,
+                                                                  sp_smooth = sp_smooth,
+                                                                  group_numbers = G,
                                                                   instance_eval=inst_refinement)
 
             Y_prob = Y_prob[0]

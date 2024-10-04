@@ -1,0 +1,47 @@
+# configs of task
+n_classes: 2
+task: 'camelyon'
+
+# configs of path
+data_root_dir: '/home/z/zeyugao/dataset/WSIData/Camelyon/clam_gen/resnet50' #'/home/z/zeyugao/dataset/WSIData/Camelyon/resnet_v1' # patch embedding path
+data_sp_dir: '/home/z/zeyugao/dataset/WSIData/Camelyon/clam_gen/sp_clam_n9_c50_512' # '/home/z/zeyugao/dataset/WSIData/TCGA-RCC_OLD/sp_n16_c50_2048/' #'/home/z/zeyugao/dataset/WSIData/TCGA-RCC/sp_n16_c1_2048' # superpixel segmentation map path
+label_frac: 0.8
+models_dir: None # set model path for second round instance refinement training
+data_mag: '0_512'
+patch_size: 512
+fea_dim: 1024
+
+results_dir: './results_clres_camel/'
+exp_code: 'camelyon_smmile_0512_5fold'
+
+# configs of training
+seed: 1
+k: 5
+k_start: 0
+k_end: 5
+max_epochs: 200
+lr: 0.00002 # 1e-4
+reg: 0.00001
+early_stopping: True
+drop_out: True
+drop_rate: 0.25
+opt: 'adam'
+bag_loss: 'bibce'
+weighted_sample: True
+log_data: True
+testing: False
+
+# configs of model
+model_type: 'smmile_single'
+model_size: 'small'
+consistency: False # attention consistency for negative bags
+drop_with_score: False # instance drop out
+D: 1 # drop out times
+superpixel: False # instance sampling
+G: 10 # number of instance sampling times
+inst_refinement: False # instance refinement
+inst_rate: 0.01 # instance rate for pseudo label generation
+n_refs: 3 # number of layers for the refinement network
+ref_start_epoch: 0 # 0 for instance refinement
+mrf: False # MRF constraint for instance refinement
+tau: 0.1 # weight control for MRF constraint

@@ -93,7 +93,7 @@ class IAMIL(nn.Module):
         
         self.det_net = nn.Sequential(*fc)
         
-#         self.det_net = nn.Linear(size[2], n_classes)# nn.Sequential(*fc)
+        # self.det_net = nn.Linear(size[2], n_classes)# nn.Sequential(*fc)
         self.cls_net = nn.Linear(size[1], n_classes)
     
         ref_net = [nn.Linear(size[1], n_classes+1) for i in range(n_refs)]
@@ -242,7 +242,7 @@ class IAMIL(nn.Module):
                 ref_score = F.softmax(ref_logits, dim=1) # N x (cls+1)
         
         Y_prob = torch.clamp(torch.sum(final_score, dim=0), min=epsilon, max=1-epsilon) # 1x3
-#         Y_prob = torch.sum(final_score, dim=0)
+        # Y_prob = torch.sum(final_score, dim=0)
         
         Y_hat = torch.topk(Y_prob, 1, dim = 0)[1]
 
@@ -257,7 +257,7 @@ class IAMIL(nn.Module):
     
 class SMMILe(IAMIL):
     def __init__(self, gate=True, size_arg = "small", dropout = True, n_classes=2, 
-                 n_refs=3, drop_rate=0.25, fea_dim=1024, multi_label = False,
+                 n_refs=3, drop_rate=0.25, fea_dim=1024, multi_label = True,
                  instance_loss_fn=nn.CrossEntropyLoss(reduction='none')):
         
         nn.Module.__init__(self) # 3x3 is better for gleason
@@ -337,7 +337,7 @@ class SMMILe(IAMIL):
         # no drop_rate is necessary, drop instances base on their scores.
         device = final_score.device
         
-        Y_prob_drop = torch.ones((1, final_score.shape[-1])).to(device)
+        Y_prob_drop = torch.ones((final_score.shape[-1])).to(device)
         
         final_score_norm = torch.stack([(final_score[:,i]-final_score[:,i].min())/
                                         (final_score[:,i].max()-final_score[:,i].min()) 
@@ -353,10 +353,10 @@ class SMMILe(IAMIL):
                 det_logits_dropped = det_logits[:,i][drop_mask==1]
                 det_score_dropped = F.softmax(det_logits_dropped, dim=0)
                 cls_score_dropped = cls_score[:,i][drop_mask==1]
-                Y_prob_drop[:,i] = torch.clamp(torch.sum(det_score_dropped*cls_score_dropped), min=epsilon, max=1-epsilon)
+                Y_prob_drop[i] = torch.clamp(torch.sum(det_score_dropped*cls_score_dropped), min=epsilon, max=1-epsilon)
                 
             else:
-                Y_prob_drop[:,i] = torch.clamp(torch.sum(final_score[:,i]), min=epsilon, max=1-epsilon) # 1x3
+                Y_prob_drop[i] = torch.clamp(torch.sum(final_score[:,i]), min=epsilon, max=1-epsilon) # 1x3
         
         return Y_prob_drop
     
@@ -459,7 +459,7 @@ class SMMILe(IAMIL):
         return energy_loss
    
     def forward(self, h, mask, sp, adj, label=None, instance_eval=False, inst_rate=0.01, 
-                return_features=False, group_numbers=1, superpixels=False, drop_with_score=False, 
+                return_features=False, group_numbers=1, superpixels=False, drop_with_score=False, drop_times=1,
                 mrf = False, consistency = False, tau=1, epsilon=1e-10):
         
         mrf_loss = 0
@@ -503,10 +503,10 @@ class SMMILe(IAMIL):
             
         else:
             if drop_with_score:
-                # Y_prob_drop = self.drop_with_score(final_score, label, label) # N * cls
-                Y_prob_dropped = self.drop_with_score_det(final_score, det_logit, cls_score, label, label) # N * cls
-
-                Y_prob.append(Y_prob_dropped)
+                for _ in range(drop_times):
+                    # Y_prob_drop = self.drop_with_score(final_score, label, label) # N * cls
+                    Y_prob_dropped = self.drop_with_score_det(final_score, det_logit, cls_score, label, label) # N * cls
+                    Y_prob.append(Y_prob_dropped)
 
             if superpixels:
 

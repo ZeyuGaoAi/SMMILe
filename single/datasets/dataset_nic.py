@@ -252,7 +252,7 @@ class Generic_WSI_Classification_Dataset(Dataset):
             def convert_to_int_str(x):
                 try:
                     # 尝试转换为int，然后转换为str
-                    return str(int(float(x)))
+                    return int(float(x))
                 except ValueError:
                     # 如果转换失败，返回原始字符串
                     return x
@@ -399,7 +399,7 @@ class Generic_MIL_SP_Dataset(Generic_WSI_Classification_Dataset):
         sp = sp.transpose(1,0)
         
         if 'feature' in record[()].keys():
-             features = record[()]['feature']
+            features = record[()]['feature']
         else:
             features = record[()]['feature2']
 
@@ -420,6 +420,7 @@ class Generic_MIL_SP_Dataset(Generic_WSI_Classification_Dataset):
             inst_label[inst_label==0]=3 # tumor(0) -> 3
             inst_label[inst_label==1]=0 # normal (1) -> 0
             inst_label[inst_label==2]=0 # normal (2) -> 0
+            inst_label[inst_label==3]=1 # tumor(3) -> 1
         
         inst_label = list(inst_label)
         

@@ -130,8 +130,11 @@ def train(datasets, cur, args):
         writer = None
 
     print('\nInit train/val/test splits...', end=' ')
-    train_split, val_split, test_split = datasets
-    test_split = val_split
+    if args.reverse_train_val:
+        val_split, train_split, test_split = datasets
+    else:
+        train_split, val_split, test_split = datasets
+
     save_splits(datasets, ['train', 'val', 'test'], os.path.join(args.results_dir, 'splits_{}.csv'.format(cur)))
     print('Done!')
     print("Training on {} samples".format(len(train_split)))
@@ -141,16 +144,13 @@ def train(datasets, cur, args):
     print('\nInit loss function...', end=' ')
     
     args.bi_loss = False
+    loss_fn = nn.functional.binary_cross_entropy
     
-    if args.bag_loss == 'bce':
-        loss_fn = nn.functional.binary_cross_entropy
+    if args.bag_loss == 'ce':
+        loss_fn = nn.CrossEntropyLoss()
         
     elif args.bag_loss == 'bibce':
         args.bi_loss = True
-        loss_fn = bi_tempered_binary_logistic_loss
-        
-    else:
-        loss_fn = nn.CrossEntropyLoss()
         
     print('Done!')
     
@@ -179,7 +179,7 @@ def train(datasets, cur, args):
 
     print('\nInit optimizer ...', end=' ')
     optimizer = get_optim(model, args)
-    scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=20, verbose=True)
+    scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, verbose=True)
     print('Done!')
     
     print('\nInit Loaders...', end=' ')
@@ -251,6 +251,7 @@ def train_loop_smmile(epoch, model, loader, optimizer, writer = None, loss_fn = 
     bi_loss = args.bi_loss
     multi_label = args.multi_label
     drop_with_score = args.drop_with_score
+    D = args.D
     superpixel = args.superpixel
     G = args.G
     inst_refinement = args.inst_refinement
@@ -294,9 +295,6 @@ def train_loop_smmile(epoch, model, loader, optimizer, writer = None, loss_fn = 
             label = torch.zeros(n_classes)
             label[index_label.long()] = 1
             label = label.to(device)
-            
-        if inst_label!=[]:
-            all_inst_label += inst_label
         
         total_loss = 0
         total_loss_value = 0
@@ -313,89 +311,91 @@ def train_loop_smmile(epoch, model, loader, optimizer, writer = None, loss_fn = 
                                                               group_numbers = G,
                                                               superpixels=superpixel, 
                                                               drop_with_score=drop_with_score,
+                                                              drop_times = D,
                                                               instance_eval=inst_refinement,
                                                               inst_rate=inst_rate,
                                                               mrf=mrf,
                                                               tau=tau,
                                                               consistency = consistency)
         
-        if inst_label!=[]:
+        if inst_label!=[] and not all(x == -1 for x in inst_label):
+            all_inst_label += inst_label
             label_hot = label_binarize(inst_label, classes=[i for i in range(n_classes+1)])
             inst_probs_tmp = [] 
             inst_preds_tmp = []
-            if not inst_refinement:
-                inst_score = score.detach().cpu().numpy() # Nxcls 不含正常
+            # if not inst_refinement:
+            inst_score = score.detach().cpu().numpy() # Nxcls 不含正常
 
-                # max-min standard all_inst_score and all_inst_score_pos
-                for class_idx in range(n_classes):
-                    
-                    if class_idx not in index_label:
-                        inst_score[:,class_idx] = [0]*len(inst_label)
-                        continue
-                        
-                    inst_score_one_class = inst_score[:,class_idx]
-
-                    inst_score_one_class = list((inst_score_one_class-inst_score_one_class.min())/
-                                                max(inst_score_one_class.max()-inst_score_one_class.min(),1e-10))
-
-                    inst_probs_tmp.append(inst_score_one_class)    
-                        
-                    inst_score[:,class_idx] = inst_score_one_class
-                    
-                    inst_probs[class_idx]+=inst_score_one_class
-                    
-                    inst_preds[class_idx]+=[0 if i<0.5 else 1 for i in inst_score_one_class]
-                    inst_preds_tmp.append([0 if i<0.5 else 1 for i in inst_score_one_class])
-                    
-                    inst_binary_labels[class_idx]+=list(label_hot[:,class_idx])
-
-                    pos_accs_each_wsi[class_idx].append(cal_pos_acc(label_hot[:,class_idx],inst_score_one_class,inst_rate))
+            # max-min standard all_inst_score and all_inst_score_pos
+            for class_idx in range(n_classes):
                 
-                if inst_preds_tmp:
+                if class_idx not in index_label:
+                    inst_score[:,class_idx] = [0]*len(inst_label)
+                    continue
                     
-                    inst_preds_tmp = np.mean(np.stack(inst_preds_tmp), axis=0) # Nx1
+                inst_score_one_class = inst_score[:,class_idx]
+
+                inst_score_one_class = list((inst_score_one_class-inst_score_one_class.min())/
+                                            max(inst_score_one_class.max()-inst_score_one_class.min(),1e-10))
+
+                inst_probs_tmp.append(inst_score_one_class)    
                     
-                else:
-                    inst_preds_tmp = [0]*len(inst_label)
-                    
-                inst_preds_neg = [1 if i==0 else 0 for i in inst_preds_tmp]
-                inst_preds[n_classes] += inst_preds_neg
-                inst_binary_labels[n_classes]+=list(label_hot[:,n_classes])
+                inst_score[:,class_idx] = inst_score_one_class
                 
-                if inst_probs_tmp:
-                    neg_score = np.mean(np.stack(inst_probs_tmp), axis=0) #n类平均，越低越是neg
+                inst_probs[class_idx]+=inst_score_one_class
+                
+                inst_preds[class_idx]+=[0 if i<0.5 else 1 for i in inst_score_one_class]
+                inst_preds_tmp.append([0 if i<0.5 else 1 for i in inst_score_one_class])
+                
+                inst_binary_labels[class_idx]+=list(label_hot[:,class_idx])
 
-                    neg_score = list((neg_score-neg_score.min())/max(neg_score.max()-neg_score.min(),1e-10))
-
-                else:
-                    neg_score = [0]*len(inst_label)
-                neg_accs_each_wsi.append(cal_neg_acc(label_hot[:,n_classes], neg_score, inst_rate))
+                pos_accs_each_wsi[class_idx].append(cal_pos_acc(label_hot[:,class_idx],inst_score_one_class,inst_rate))
+                
+            if inst_preds_tmp != []:
+                
+                inst_preds_tmp = np.mean(np.stack(inst_preds_tmp), axis=0) # Nx1
                 
             else:
+                inst_preds_tmp = [0]*len(inst_label)
+                
+            inst_preds_neg = [1 if i==0 else 0 for i in inst_preds_tmp]
+            inst_preds[n_classes] += inst_preds_neg
+            inst_binary_labels[n_classes]+=list(label_hot[:,n_classes])
+            
+            if inst_probs_tmp:
+                neg_score = np.mean(np.stack(inst_probs_tmp), axis=0) #n类平均，越低越是neg
+
+                neg_score = list((neg_score-neg_score.min())/max(neg_score.max()-neg_score.min(),1e-10))
+
+            else:
+                neg_score = [0]*len(inst_label)
+            neg_accs_each_wsi.append(cal_neg_acc(label_hot[:,n_classes], neg_score, inst_rate))
+                
+            if inst_refinement:
                 inst_score = ref_score.detach().cpu().numpy() #有正常类
-                pos_score = score.detach().cpu().numpy() #final_score_sp 没有正常类
+                # pos_score = score.detach().cpu().numpy() #final_score_sp 没有正常类
 
-                # max-min standard all_inst_score and all_inst_score_pos
-                for class_idx in range(n_classes):
-                    if class_idx not in index_label:
-                        continue
-                    inst_score_one_class = pos_score[:,class_idx]
+                # # max-min standard all_inst_score and all_inst_score_pos
+                # for class_idx in range(n_classes):
+                #     if class_idx not in index_label:
+                #         continue
+                #     inst_score_one_class = pos_score[:,class_idx]
 
-                    inst_score_one_class = list((inst_score_one_class-inst_score_one_class.min())/
-                                                max(inst_score_one_class.max()-inst_score_one_class.min(), 1e-10))
+                #     inst_score_one_class = list((inst_score_one_class-inst_score_one_class.min())/
+                #                                 max(inst_score_one_class.max()-inst_score_one_class.min(), 1e-10))
                     
-                    inst_probs_tmp.append(inst_score_one_class)
-                    pos_accs_each_wsi[class_idx].append(cal_pos_acc(label_hot[:,class_idx],inst_score_one_class,inst_rate))
+                #     inst_probs_tmp.append(inst_score_one_class)
+                    # pos_accs_each_wsi[class_idx].append(cal_pos_acc(label_hot[:,class_idx],inst_score_one_class,inst_rate))
 
 
-                if inst_probs_tmp:
-                    neg_score = np.mean(np.stack(inst_probs_tmp), axis=0) #n类平均，越低越是neg
+                # if inst_probs_tmp:
+                #     neg_score = np.mean(np.stack(inst_probs_tmp), axis=0) #n类平均，越低越是neg
 
-                    neg_score = list((neg_score-neg_score.min())/max(neg_score.max()-neg_score.min(),1e-10))
+                #     neg_score = list((neg_score-neg_score.min())/max(neg_score.max()-neg_score.min(),1e-10))
 
-                else:
-                    neg_score = [0]*len(inst_label)
-                neg_accs_each_wsi.append(cal_neg_acc(label_hot[:,n_classes], neg_score, inst_rate))
+                # else:
+                #     neg_score = [0]*len(inst_label)
+                # neg_accs_each_wsi.append(cal_neg_acc(label_hot[:,n_classes], neg_score, inst_rate))
 
 
             all_inst_score.append(inst_score)
@@ -403,14 +403,14 @@ def train_loop_smmile(epoch, model, loader, optimizer, writer = None, loss_fn = 
 
         acc_logger.log(Y_hat, index_label)
         
-        loss =0
-        for one_prob in Y_prob:
+        loss = loss_fn(Y_prob[0], label.squeeze().float())/len(Y_prob)
+
+        for one_prob in Y_prob[1:]:
             if bi_loss:
-                loss += loss_fn(one_prob, label, 0.2, 1., reduction='mean')
+                loss += bi_tempered_binary_logistic_loss(one_prob, label, 0.2, 1., reduction='mean')/len(Y_prob)
             else:
-                loss += loss_fn(one_prob, label.squeeze().float())
+                loss += loss_fn(one_prob, label.squeeze().float())/len(Y_prob)
         
-        loss = loss/len(Y_prob)
 
         loss_value = loss.item()
 
@@ -583,9 +583,6 @@ def validate_smmile(cur, epoch, model, loader, early_stopping = None, writer = N
                 label = torch.zeros(n_classes)
                 label[index_label.long()] = 1
                 label = label.to(device)
-
-            if inst_label!=[]:
-                all_inst_label += inst_label
             
             
             data = data.to(device)
@@ -598,7 +595,8 @@ def validate_smmile(cur, epoch, model, loader, early_stopping = None, writer = N
                                                                   instance_eval=inst_refinement,
                                                                   inst_rate=inst_rate)
 
-            if inst_label!=[]:
+            if inst_label!=[] and not all(x == -1 for x in inst_label):
+                all_inst_label += inst_label
                 label_hot = label_binarize(inst_label, classes=[i for i in range(n_classes+1)])
                 inst_probs_tmp = [] 
                 inst_preds_tmp = []
@@ -607,13 +605,13 @@ def validate_smmile(cur, epoch, model, loader, early_stopping = None, writer = N
 
                     # max-min standard all_inst_score and all_inst_score_pos
                     for class_idx in range(n_classes):
-#                         if class_idx not in Y_hat:
+                        # if class_idx not in Y_hat:
                         if class_idx not in index_label:
                             inst_score[:,class_idx] = [0]*len(inst_label)
                             continue
 
                         inst_score_one_class = inst_score[:,class_idx]
-#                         if len(set(inst_score_one_class))>1:
+                        # if len(set(inst_score_one_class))>1:
                         inst_score_one_class = list((inst_score_one_class-inst_score_one_class.min())
                                                     /max(inst_score_one_class.max()-inst_score_one_class.min(),1e-10))
                         inst_score_one_class = list(inst_score_one_class)
@@ -630,7 +628,7 @@ def validate_smmile(cur, epoch, model, loader, early_stopping = None, writer = N
                         pos_accs_each_wsi[class_idx].append(cal_pos_acc(label_hot[:,class_idx],
                                                                         inst_score_one_class,inst_rate))
 
-                    if inst_preds_tmp:
+                    if inst_preds_tmp !=[]:
                         inst_preds_tmp = np.mean(np.stack(inst_preds_tmp), axis=0)
                     else:
                         inst_preds_tmp = [0]*len(inst_label)
@@ -681,14 +679,13 @@ def validate_smmile(cur, epoch, model, loader, early_stopping = None, writer = N
             
             acc_logger.log(Y_hat, index_label)
             
-            loss =0
-            for one_prob in Y_prob:
+            loss = loss_fn(Y_prob[0], label.squeeze().float())/len(Y_prob)
+
+            for one_prob in Y_prob[1:]:
                 if bi_loss:
-                    loss += loss_fn(one_prob, label, 0.2, 1., reduction='mean')
+                    loss += bi_tempered_binary_logistic_loss(one_prob, label, 0.2, 1., reduction='mean')/len(Y_prob)
                 else:
-                    loss += loss_fn(one_prob, label.squeeze().float())
-                    
-            loss = loss/len(Y_prob)
+                    loss += loss_fn(one_prob, label.squeeze().float())/len(Y_prob)
                     
             Y_prob = Y_prob[0]
             prob[batch_idx] = Y_prob.cpu().numpy()

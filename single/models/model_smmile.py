@@ -76,6 +76,67 @@ args:
     subtyping: whether it's a subtyping problem
 """
 
+class RAMIL(nn.Module):
+    def __init__(self, gate=True, size_arg = "small", dropout = False, drop_rate=0.25, n_classes=2, fea_dim=1024, n_refs=3):
+        nn.Module.__init__(self)
+        
+        self.size_dict = {"small": [fea_dim, 128, 64], "big": [fea_dim, 512, 256]}
+        size = self.size_dict[size_arg]
+        fc = [nn.Linear(size[0], size[1]), nn.ReLU()]
+        if dropout:
+            fc.append(nn.Dropout(drop_rate))
+        if gate:
+            attention_net = Attn_Net_Gated(L = size[1], D = size[2], dropout = dropout, n_classes = n_classes)
+        else:
+            attention_net = Attn_Net(L = size[1], D = size[2], dropout = dropout, n_classes = n_classes)
+        fc.append(attention_net)
+        
+        self.det_net = nn.Sequential(*fc)
+        
+        self.cls_net = nn.Linear(size[1], 1)
+
+        self.n_classes = n_classes
+
+        initialize_weights(self)
+        
+    @staticmethod
+    def create_targets(length, cls, device):
+        return torch.full((length, ), cls, device=device).long()
+        
+    def relocate(self):
+        device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.cls_net = self.cls_net.to(device)
+        self.det_net = self.det_net.to(device)
+        
+    def forward(self, h, mask, sp, adj, label=None, instance_eval=False, inst_rate=0.01, 
+                return_features=False, group_numbers=1, superpixels=False, drop_with_score=False, 
+                mrf = False, tau=1, epsilon=1e-10):
+
+
+        f_h, f_w = np.where(mask==1)
+        
+        h = h[:,f_h,f_w].T # h-> N x 1024
+        
+        det_logit, h = self.det_net(h) # h-> N x 512
+
+        det_score = F.softmax(det_logit, dim=0) # the det prob (attention) of each patch N x 3
+
+        h_agg = torch.matmul(h.T, det_score) # 512 x 3
+        
+        cls_logit = self.cls_net(h_agg.T) # 3 x 1
+
+        Y_prob = torch.sigmoid(cls_logit).squeeze() # the cls prob of WSI
+        
+        results_dict = {}
+        
+        if return_features:
+            results_dict.update({'cls_logits': cls_logit})
+            results_dict.update({'det_logits': det_logit})
+            
+        Y_hat = torch.topk(Y_prob, 1, dim = 0)[1]
+
+        return det_score, [Y_prob], Y_hat, det_score, results_dict
+
 class IAMIL(nn.Module):
     def __init__(self, gate=True, size_arg = "small", dropout = False, subtyping=False, n_classes=2, n_refs=1, fea_dim=1024, 
                  instance_loss_fn=nn.CrossEntropyLoss(reduction='none')):
@@ -249,12 +310,12 @@ class SMMILe(IAMIL):
                  instance_loss_fn=nn.CrossEntropyLoss(reduction='none')):
         nn.Module.__init__(self)
         
-        self.size_dict = {"small": [fea_dim, 128, 64], "big": [fea_dim, 512, 256]} # 512 256 overfitting
+        self.size_dict = {"small": [fea_dim, 128, 64], "big": [fea_dim, 512, 256]} # 512 256 overfitting 
         size = self.size_dict[size_arg]
         
         if size_arg == 'small':
             conv_nic = [nn.Conv2d(size[0], size[1], kernel_size=3, stride=1, padding=1, bias=False)] #  dilation=1
-        else:
+        else: # big for iamil
             conv_nic = [nn.Conv2d(size[0], size[1], kernel_size=1, stride=1, padding=0, bias=False)]
             
         conv_nic.append(nn.BatchNorm2d(size[1]))
@@ -304,6 +365,7 @@ class SMMILe(IAMIL):
         # no drop_rate is necessary, drop instances base on their scores.
         device = final_score.device
         tensor_rd = torch.rand(final_score.shape).to(device)
+        # tensor_rd = torch.distributions.Beta(10.0, 10.0).sample(final_score.shape).to(device)
         drop_mask = torch.ones(final_score.shape).to(device)
         
         final_score_norm = torch.stack([(final_score[:,i]-final_score[:,i].min())/(final_score[:,i].max()-final_score[:,i].min()) 
@@ -356,7 +418,6 @@ class SMMILe(IAMIL):
         all_instances = torch.cat(all_instances, 0)
         all_weights = torch.cat(all_weights, 0)
         return all_targets, all_instances, all_weights
-        
         
     def superpixel_sample(self, all_sp, sp, det_logit, cls_logit, g_num):
         det_logit_sampled = [[] for i in range(g_num)]
@@ -440,9 +501,9 @@ class SMMILe(IAMIL):
 
         return energy_loss
 
-    def forward(self, h, mask, sp, adj, label=None, instance_eval=False, inst_rate=0.01, 
-                return_features=False, group_numbers=1, superpixels=False, drop_with_score=False, 
-                mrf = False, s = False, tau=1, epsilon=1e-10):
+    def forward(self, h, mask, sp, adj, label=None, instance_eval=False, inst_rate=0.01, sp_smooth=False,
+                return_features=False, group_numbers=1, superpixels=False, drop_with_score=False, drop_times=1,
+                mrf = False, tau=1, epsilon=1e-10):
         
         mrf_loss = 0
         instance_loss = 0
@@ -479,12 +540,13 @@ class SMMILe(IAMIL):
 
         if drop_with_score:
 
-            drop_mask = self.drop_with_score(final_score, label) # N * cls
-            final_score_droped = final_score * drop_mask
-            Y_prob_drop = torch.clamp(torch.sum(final_score_droped, dim=0), min=epsilon, max=1-epsilon) # 1x3
+            for _ in range(drop_times):
+                drop_mask = self.drop_with_score(final_score, label) # N * cls
+                final_score_droped = final_score * drop_mask
+                Y_prob_drop = torch.clamp(torch.sum(final_score_droped, dim=0), min=epsilon, max=1-epsilon) # 1x3
 
-            Y_prob.append(Y_prob_drop)
-            
+                Y_prob.append(Y_prob_drop)
+        
         if superpixels:
         
             # use superpixel to sample
@@ -495,21 +557,23 @@ class SMMILe(IAMIL):
                 Y_prob_sp = torch.clamp(torch.sum(sp_score, dim=0), min=epsilon, max=1-epsilon) # 1x3
                 all_sp_score.append(sp_score)
                 Y_prob.append(Y_prob_sp)
+                # print('Y_prob_sp: {}, label: {}'.format(Y_prob_sp, label))
 
-                if drop_with_score:
+                if drop_with_score: # Y_prob_sp[label]>0.5
                     drop_mask = self.drop_with_score(sp_score, label) # N * cls
                     sp_score_droped = sp_score * drop_mask
                     Y_prob_sp = torch.clamp(torch.sum(sp_score_droped, dim=0), min=epsilon, max=1-epsilon) # 3
                     Y_prob.append(Y_prob_sp)
 
             Y_hat = torch.topk(torch.mean(torch.stack(Y_prob), dim=0), 1, dim = 0)[1]
-
-            # max pooling for each superpixel
-            sp_score_mean = torch.mean(torch.stack(all_sp_score), dim=0)
             
-            # aggregation for sp
-            for sp_index in range(len(sp_list)):
-                final_score_sp[sp==sp_list[sp_index]] = sp_score_mean[sp_index]
+            if sp_smooth:
+                # max pooling for each superpixel
+                sp_score_mean = torch.mean(torch.stack(all_sp_score), dim=0)
+                
+                # aggregation for sp
+                for sp_index in range(len(sp_list)):
+                    final_score_sp[sp==sp_list[sp_index]] = sp_score_mean[sp_index]
             
         ref_score = final_score
         
@@ -550,10 +614,16 @@ class SMMILe_SINGLE(SMMILe):
                  instance_loss_fn=nn.CrossEntropyLoss(reduction='none')):
         nn.Module.__init__(self)
         
-        self.size_dict = {"small": [fea_dim, 512, 256], "big": [fea_dim, 384, 256]} #
+        # self.size_dict = {"small": [fea_dim, 512, 256], "big": [fea_dim, 384, 256]} #
+        self.size_dict = {"small": [fea_dim, 128, 64], "big": [fea_dim, 512, 256]} # 512 256 overfitting 
         size = self.size_dict[size_arg]
+
+        if size_arg == 'small':
+            conv_nic = [nn.Conv2d(size[0], size[1], kernel_size=3, stride=1, padding=1, bias=False)] #  dilation=1
+        else: # big for iamil
+            conv_nic = [nn.Conv2d(size[0], size[1], kernel_size=1, stride=1, padding=0, bias=False)]
         
-        conv_nic = [nn.Conv2d(size[0], size[1], kernel_size=1, stride=1, padding=1, bias=False)] #  1x1 for camelyon
+        # conv_nic = [nn.Conv2d(size[0], size[1], kernel_size=1, stride=1, padding=1, bias=False)] #  1x1 for camelyon
         conv_nic.append(nn.BatchNorm2d(size[1]))
         conv_nic.append(nn.ReLU())
         if dropout:
@@ -733,8 +803,8 @@ class SMMILe_SINGLE(SMMILe):
         
         return final_score
 
-    def forward(self, h, mask, sp, adj, label=None, instance_eval=False, inst_rate=0.01, 
-                return_features=False, group_numbers=1, superpixels=False, drop_with_score=False, 
+    def forward(self, h, mask, sp, adj, label=None, instance_eval=False, inst_rate=0.01, sp_smooth=False,
+                return_features=False, group_numbers=1, superpixels=False, drop_with_score=False, drop_times=1,
                 mrf = False, consistency = False, tau=1, epsilon=1e-10):
         
 
@@ -779,16 +849,17 @@ class SMMILe_SINGLE(SMMILe):
         # if not superpixels and drop_with_score:
         # for single class classification, only positive WSI need to be drop
         else:
-
             if drop_with_score:
 
-                drop_mask = self.drop_with_score_single(final_score, label) # N * cls
+                for _ in range(drop_times):
 
-                final_score_droped = final_score * drop_mask
+                    drop_mask = self.drop_with_score_single(final_score, label) # N * cls
 
-                Y_prob_drop = torch.clamp(torch.sum(final_score_droped, dim=0), min=epsilon, max=1-epsilon) # 1
+                    final_score_droped = final_score * drop_mask
 
-                Y_prob.append(Y_prob_drop)
+                    Y_prob_drop = torch.clamp(torch.sum(final_score_droped, dim=0), min=epsilon, max=1-epsilon) # 1
+
+                    Y_prob.append(Y_prob_drop)
 
             if superpixels:
 
@@ -810,7 +881,15 @@ class SMMILe_SINGLE(SMMILe):
                         drop_mask = self.drop_with_score_single(sp_score, label) # N * cls
                         sp_score_droped = sp_score * drop_mask
                         Y_prob_sp = torch.clamp(torch.sum(sp_score_droped, dim=0), min=epsilon, max=1-epsilon) # 3
-                        Y_prob.append(Y_prob_sp) 
+                        Y_prob.append(Y_prob_sp)
+
+                if sp_smooth:
+                    # mean pooling for each superpixel
+                    sp_score_mean = torch.mean(torch.stack(all_sp_score), dim=0)
+                    
+                    # aggregation for sp
+                    for sp_index in range(len(sp_list)):
+                        final_score_sp[sp==sp_list[sp_index]] = sp_score_mean[sp_index]
             
             
         ref_score = final_score_sp
