@@ -105,7 +105,7 @@ parser.add_argument('--model_type', type=str, choices=['ramil','smmile','smmile_
 parser.add_argument('--exp_code', type=str, help='experiment code for saving results')
 parser.add_argument('--weighted_sample', action='store_true', default=False, help='enable weighted sampling')
 parser.add_argument('--model_size', type=str, choices=['small', 'big'], default='small', help='size of model')
-parser.add_argument('--task', type=str, choices=['camelyon','renal_subtype','renal_spatial','lung_subtype','ovarian_subtype'])
+parser.add_argument('--task', type=str, choices=['camelyon','renal_subtype','renal_subtype_yfy','lung_subtype','ovarian_subtype'])
 parser.add_argument('--fea_dim', type=int, default=1024,
                      help='the original dimensions of patch embedding')
 parser.add_argument('--models_dir', type=str, default=None,
@@ -229,36 +229,6 @@ elif args.task == 'renal_subtype':
                         seed = 10, 
                         print_info = True,
                         label_dict = {'ccrcc':0, 'prcc':1, 'chrcc':2},
-                        patient_strat= False,
-                        ignore=[])
-
-elif args.task == 'renal_spatial_pt':
-    dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/renal_spatial_pt_397.csv',
-                        data_dir = os.path.join(args.data_root_dir),
-                        data_mag = args.data_mag,
-                        sp_dir = os.path.join(args.data_sp_dir),
-                        task = args.task,
-                        size = args.patch_size,
-                        shuffle = False, 
-                        seed = 10, 
-                        print_info = True,
-                        label_dict = {'low':0, 'high':1},
-                        # label_dict = {'m1':0, 'm2':1, 'm3':2, 'm4':3},
-                        patient_strat= False,
-                        ignore=[])
-    
-elif args.task == 'renal_spatial_emt':
-    dataset = NIC_MIL_SP_Dataset(csv_path = 'dataset_csv/renal_spatial_emt_397.csv',
-                        data_dir = os.path.join(args.data_root_dir),
-                        data_mag = args.data_mag,
-                        sp_dir = os.path.join(args.data_sp_dir),
-                        task = args.task,
-                        size = args.patch_size,
-                        shuffle = False, 
-                        seed = 10, 
-                        print_info = True,
-                        label_dict = {'low':0, 'high':1},
-                        # label_dict = {'m1':0, 'm2':1, 'm3':2, 'm4':3},
                         patient_strat= False,
                         ignore=[])
     
