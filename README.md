@@ -68,6 +68,14 @@ python eval.py --data_root_dir /path/to/extracted/embedding/folder/ \
                --results_dir /path/to/trained/models/folder/ \
                --models_exp_code smmile_d1sp_ref_mrf_s1 --save_exp_code _conch_rcc
 ```
+Heat map generation:
+```
+python generate_heatmap.py \
+    --model_name smmile \
+    --wsi_dir '/path/to/original/svs_file/folder/*.svs' \
+    --results_dir '/path/to/generated/results/folder/' \
+    --num_workers 8
+```
 The single WSI demo (several paths need to be set in demo.py):
 ```
 python demo.py
