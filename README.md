@@ -29,7 +29,7 @@ We provide extracted embeddings (ResNet-50, Conch) and superpixel segmentation r
 
 # Usage
 ## Preprocessing
-1. Embedding Extraction (Customized)
+### 1. Embedding Extraction (Customized)
 ```
 python feature_extraction.py --encoder_name {resnet50/conch} \
         --feature_dir /path/to/your/embedding/save/folder\
@@ -70,7 +70,7 @@ python feature_extraction_patch.py --encoder_name {resnet50/conch} \
 You can also use the standard preprocessing pipeline provided by [CLAM](https://github.com/mahmoodlab/CLAM). 
 We have a modified version [CLAM_Pre](https://github.com/ZeyuGaoAi/CLAM_PreProcessing) to generate embedding files with readable formats for SMMILe.
 
-2. Superpixel Generation: Set up the size (patch size) as the same as the feature extraction step, n_segments_persp can be set to 9, 16, and 25 for different datasets. We use 16 as default.
+### 2. Superpixel Generation: Set up the size (patch size) as the same as the feature extraction step, n_segments_persp can be set to 9, 16, and 25 for different datasets. We use 16 as default.
 ```
 python superpixel_generation.py --size 2048 --n_segments_persp 16 --compactness 50 \
                                 --file_suffix '*0_2048.npy' --keyword_feature feature \
