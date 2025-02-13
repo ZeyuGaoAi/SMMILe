@@ -63,11 +63,12 @@ For datasets with tessellated patches (SICAPv2), patches are organized into subd
 python feature_extraction_patch.py --encoder_name {resnet50/conch} \
         --feature_dir /path/to/your/embedding/save/folder\
 	--patch_dirs /path/to/patches/*
+	--file_suffix 0_1024.npy --patch_size 1024
 ```
 
 
 You can also use the standard preprocessing pipeline provided by [CLAM](https://github.com/mahmoodlab/CLAM). 
-We have a modified version [CLAM_Pre](https://github.com/ZeyuGaoAi/CLAM_PreProcessing) to generate regular embedding files for SMMILe.
+We have a modified version [CLAM_Pre](https://github.com/ZeyuGaoAi/CLAM_PreProcessing) to generate embedding files with readable formats for SMMILe.
 
 2. Superpixel Generation
 ```
