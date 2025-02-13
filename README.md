@@ -36,10 +36,7 @@ python feature_extraction.py --encoder_name {resnet50/conch} \
         --anno_dir /path/to/annotation/folder/\
         --wsi_dir /path/to/svs/file/folder/\
         --file_list_path /path/to/slide/list/file/\
-        --patch_size 512\
-        --step_size 512\
-        --num_workers 5\
-        --level 1\
+        --patch_size 512 --step_size 512 --level 1\
 ```
 For TCGA datasets (Renal, Lung, Gastric), level = 1.
 For Camelyon-16 dataset (Breast), UBC-OCEAN (Ovarian), level = 0.
