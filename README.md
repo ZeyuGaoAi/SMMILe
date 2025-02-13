@@ -31,9 +31,21 @@ We provide extracted embeddings (ResNet-50, Conch) and superpixel segmentation r
 ## Preprocessing
 1. Embedding Extraction (Customized)
 ```
-python feature_extraction.py --set_your_params_here
+python feature_extraction.py --encoder_name {resnet50/conch} \
+        --feature_dir /path/to/your/embedding/save/folder\
+        --anno_dir /path/to/annotation/folder/\
+        --wsi_dir /path/to/svs/file/folder/\
+        --file_list_path /path/to/slide/list/file/\
+        --patch_size 512\
+        --step_size 512\
+        --num_workers 5\
+        --level 1\
 ```
-You can also use the standard preprocessing pipeline provided by [CLAM](https://github.com/mahmoodlab/CLAM).
+For TCGA datasets (Renal, Lung, Gastric), level = 1.
+For Camelyon-16 dataset (Breast), UBC-OCEAN (Ovarian), level = 0.
+
+You can also use the standard preprocessing pipeline provided by [CLAM](https://github.com/mahmoodlab/CLAM). 
+We have a modified version [CLAM_Pre](https://github.com/ZeyuGaoAi/CLAM_PreProcessing) to generate regular embedding files for SMMILe.
 
 2. Superpixel Generation
 ```
