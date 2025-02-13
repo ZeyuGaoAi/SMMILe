@@ -39,7 +39,32 @@ python feature_extraction.py --encoder_name {resnet50/conch} \
         --patch_size 512 --step_size 512 --level 1\
 ```
 For TCGA datasets (Renal, Lung, Gastric), level = 1.
+
 For Camelyon-16 dataset (Breast), UBC-OCEAN (Ovarian), level = 0.
+
+For datasets with tessellated patches (SICAPv2), patches are organized into subdirectories based on their class labels. Each parent folder represents a WSI, and its subfolders contain patches belonging to different classes.:
+```
+/xxx/SICAPv2/
+│── 17B00208864/                # WSI ID (Parent folder for a slide)
+│   ├── 0/                      # Class 0 patches
+│   │   ├── patch_001.png
+│   │   ├── patch_002.png
+│   │   ├── ...
+│   ├── 3/                      # Class 3 patches
+│   │   ├── patch_101.png
+│   │   ├── patch_102.png
+│   │   ├── ...
+│   ├── 4/                      # Class 4 patches
+│   │   ├── patch_201.png
+│   │   ├── patch_202.png
+│   │   ├── ...
+```
+```
+python feature_extraction_patch.py --encoder_name {resnet50/conch} \
+        --feature_dir /path/to/your/embedding/save/folder\
+	--patch_dirs /path/to/patches/*
+```
+
 
 You can also use the standard preprocessing pipeline provided by [CLAM](https://github.com/mahmoodlab/CLAM). 
 We have a modified version [CLAM_Pre](https://github.com/ZeyuGaoAi/CLAM_PreProcessing) to generate regular embedding files for SMMILe.
