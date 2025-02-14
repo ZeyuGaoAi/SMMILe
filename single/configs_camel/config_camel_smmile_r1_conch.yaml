@@ -34,12 +34,12 @@ testing: False
 
 # configs of model
 model_type: 'smmile_single'
-model_size: 'small'
-consistency: False # attention consistency for negative bags
-drop_with_score: False # instance drop out
-D: 5 # drop out times
-superpixel: False # instance sampling
-G: 5 # number of instance sampling times
+model_size: 'big'
+consistency: True # attention consistency for negative bags
+drop_with_score: True # instance drop out
+D: 1 # drop out times
+superpixel: True # instance sampling
+G: 10 # number of instance sampling times
 inst_refinement: False # instance refinement
 inst_rate: 0.01 # instance rate for pseudo label generation
 n_refs: 3 # number of layers for the refinement network
