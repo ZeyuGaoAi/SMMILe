@@ -108,6 +108,10 @@ python eval.py --data_root_dir /path/to/extracted/embedding/folder/ \
                --results_dir /path/to/trained/models/folder/ \
                --models_exp_code smmile_d1sp_ref_mrf_s1 --save_exp_code _conch_rcc
 ```
+Metric calculation:
+```
+python metric_calculate.py --data_root_dir /path/to/eval/results/folder/
+```
 Heat map generation:
 ```
 python generate_heatmap.py \
