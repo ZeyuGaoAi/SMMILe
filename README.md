@@ -98,6 +98,7 @@ python main.py --config ./configs_rcc/config_renal_smmile_r1_conch.yaml  --drop_
                --max_epochs 20
 ```
 Note that using ```--consistency``` for the dataset containing normal cases in both stages.
+Also, ```--mrf``` is not suitable for datasets only with small tumor regions, like Camelyon16, most WSIs only have several patches containing tumor.
 
 ## Evaluation
 The whole test set:
